@@ -240,6 +240,23 @@ var ImeiLogic = (function () {
     return [header].concat(rows).map(function (r) { return r.map(clean).join('\t'); }).join('\n');
   }
 
+  function escHtml(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Formatted table for pasting into Excel/Word/Outlook. Cells carry an Excel "text" number
+  // format so IMEIs keep their leading zeros.
+  function toHtmlTable(header, rows) {
+    var td = 'border:1px solid #9aa8a2;padding:3px 8px;mso-number-format:\'\\@\';';
+    var th = td + 'background:#166E54;color:#ffffff;font-weight:bold;text-align:left;';
+    var out = '<table style="border-collapse:collapse;font-family:\'Segoe UI\',Arial,sans-serif;font-size:11pt">';
+    out += '<tr>' + header.map(function (h) { return '<th style="' + th + '">' + escHtml(h) + '</th>'; }).join('') + '</tr>';
+    rows.forEach(function (r) {
+      out += '<tr>' + r.map(function (v) { return '<td style="' + td + '">' + escHtml(v) + '</td>'; }).join('') + '</tr>';
+    });
+    return out + '</table>';
+  }
+
   function colLetter(i) {
     var s = '';
     for (i = i + 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
@@ -249,7 +266,7 @@ var ImeiLogic = (function () {
   return {
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
-    toTsv: toTsv, colLetter: colLetter
+    toTsv: toTsv, toHtmlTable: toHtmlTable, colLetter: colLetter
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
@@ -597,52 +614,65 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     ];
   }
 
-  function copyText(text, btn) {
+  // Puts plain text (tab-separated) and, when given, an HTML table on the clipboard.
+  function copyText(text, btn, html) {
     function done(ok) {
       var old = btn.textContent;
       btn.textContent = ok ? 'Copied' : 'Copy failed';
       setTimeout(function () { btn.textContent = old; }, 1500);
     }
-    function fallback() {
+    function viaCopyEvent() {
+      var ok = false;
+      function onCopy(e) {
+        e.clipboardData.setData('text/plain', text);
+        if (html) e.clipboardData.setData('text/html', html);
+        e.preventDefault();
+        ok = true;
+      }
       var ta = document.createElement('textarea');
       ta.value = text; ta.setAttribute('readonly', '');
       ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.select();
-      var ok = false;
-      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.addEventListener('copy', onCopy);
+      try { document.execCommand('copy'); } catch (e) { ok = false; }
+      document.removeEventListener('copy', onCopy);
       document.body.removeChild(ta);
-      done(ok);
+      return ok;
     }
+    if (viaCopyEvent()) { done(true); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
-    } else fallback();
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    } else done(false);
   }
 
   function renderSummary(items, table) {
     var box = $('summary');
     box.textContent = '';
-    if (items.length < 2) return;
+    if (items.length < 1) return;
     var header = ['IMEI', 'Device Type', 'Manufacturer', 'Model'];
     var rows = items.map(function (it) { return summaryRow(it, table); });
 
-    box.appendChild(el('h2', null, 'Summary'));
-    var wrap = el('div', 'table-wrap');
-    var tbl = document.createElement('table');
-    var thead = document.createElement('thead'), htr = document.createElement('tr');
-    header.forEach(function (h) { htr.appendChild(el('th', null, h)); });
-    thead.appendChild(htr); tbl.appendChild(thead);
-    var tbody = document.createElement('tbody');
-    rows.forEach(function (r) {
-      var tr = document.createElement('tr');
-      r.forEach(function (v, i) { tr.appendChild(el('td', i === 0 ? 'mono' : null, v)); });
-      tbody.appendChild(tr);
-    });
-    tbl.appendChild(tbody); wrap.appendChild(tbl); box.appendChild(wrap);
+    // The table is only shown for 2 or more IMEIs; the Copy button is always available.
+    if (items.length >= 2) {
+      box.appendChild(el('h2', null, 'Summary'));
+      var wrap = el('div', 'table-wrap');
+      var tbl = document.createElement('table');
+      var thead = document.createElement('thead'), htr = document.createElement('tr');
+      header.forEach(function (h) { htr.appendChild(el('th', null, h)); });
+      thead.appendChild(htr); tbl.appendChild(thead);
+      var tbody = document.createElement('tbody');
+      rows.forEach(function (r) {
+        var tr = document.createElement('tr');
+        r.forEach(function (v, i) { tr.appendChild(el('td', i === 0 ? 'mono' : null, v)); });
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody); wrap.appendChild(tbl); box.appendChild(wrap);
+    }
 
     var row = el('div', 'row');
     var btn = el('button', null, 'Copy results');
     btn.type = 'button';
-    btn.addEventListener('click', function () { copyText(L.toTsv(header, rows), btn); });
+    btn.addEventListener('click', function () { copyText(L.toTsv(header, rows), btn, L.toHtmlTable(header, rows)); });
     row.appendChild(btn);
     box.appendChild(row);
   }
