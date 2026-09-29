@@ -125,6 +125,7 @@ input[type=text], input[type=password] {
   width: 100%; padding: 5px 8px; background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: 4px; font: inherit;
 }
+label.check { display: flex; align-items: center; gap: 6px; font-weight: 400; margin-top: 8px; }
 details.panel > summary { cursor: pointer; font-weight: 600; }
 details.panel[open] > summary { margin-bottom: 8px; }
 .panel a { color: var(--accent); }
@@ -201,25 +202,39 @@ details.log > summary { cursor: pointer; font-weight: 600; }
   <p class="hint" style="margin-top:0">Optional. Your sheet is never uploaded: the AI asks this add-in to run lookups locally, and only those results are sent. See "What was sent to the AI" below.</p>
 
   <details id="aiSettings" class="panel">
-    <summary>Provider and key</summary>
-    <div class="field">
-      <label for="aiProvider">Provider</label>
-      <select id="aiProvider">
-        <option value="gemini">Google Gemini</option>
-        <option value="groq">Groq</option>
-      </select>
-      <div id="aiNote" class="hint" style="margin-top:4px"></div>
+    <summary>Connection</summary>
+
+    <div id="aiProxyBox">
+      <div class="hint">Ask AI runs through your team's shared connection: Groq first, with Gemini as a backup when Groq's free limit is reached. You don't need an API key.</div>
+      <div id="aiProxyNote" class="hint" style="margin-top:6px"></div>
+      <div class="field" style="margin-top:8px">
+        <label for="aiTeamCode">Team access code</label>
+        <input type="password" id="aiTeamCode" spellcheck="false" autocomplete="off">
+        <div class="hint" style="margin-top:4px">Only if your team set one. Saved in this browser.</div>
+      </div>
+      <label class="check"><input type="checkbox" id="aiOwn"> Use my own API keys instead</label>
     </div>
-    <div class="field">
-      <label for="aiModel">Model</label>
-      <input type="text" id="aiModel" spellcheck="false" autocomplete="off">
+
+    <div id="aiOwnBox">
+      <div class="field">
+        <label for="aiProvider">Provider</label>
+        <select id="aiProvider">
+          <option value="groq">Groq</option>
+          <option value="gemini">Google Gemini</option>
+        </select>
+        <div id="aiNote" class="hint" style="margin-top:4px"></div>
+      </div>
+      <div class="field">
+        <label for="aiModel">Model</label>
+        <input type="text" id="aiModel" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="aiKey">API key</label>
+        <input type="password" id="aiKey" spellcheck="false" autocomplete="off">
+        <div class="hint" style="margin-top:4px"><a id="aiKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free key</a>. Saved only in this browser on this computer. If you save a key for both providers, the other one is used as a backup.</div>
+      </div>
+      <button id="aiClearKeys" class="small" type="button">Clear saved keys</button>
     </div>
-    <div class="field">
-      <label for="aiKey">API key</label>
-      <input type="password" id="aiKey" spellcheck="false" autocomplete="off">
-      <div class="hint" style="margin-top:4px"><a id="aiKeyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key</a>. Saved only in this browser on this computer.</div>
-    </div>
-    <button id="aiClearKeys" class="small" type="button">Clear saved keys</button>
   </details>
 
   <div id="aiOff" class="banner info">Ask AI is off until you paste an API key above.</div>
@@ -241,6 +256,7 @@ details.log > summary { cursor: pointer; font-weight: 600; }
   </details>
 </div>
 
+</div><!-- /#app -->
 
 <!-- ============ Pure logic: runs in the task pane and under node (see test.js) ============ -->
 <script id="imei-logic">
@@ -1031,7 +1047,7 @@ var AiLogic = (function (L) {
     var msg;
     if (status === 0) msg = 'Could not reach the provider. Check your internet connection.';
     else if (status === 400) msg = 'The request was rejected (400). Check the Model name, or the chat may be too long.';
-    else if (status === 401 || status === 403) msg = 'The API key was not accepted (' + status + '). Check that you pasted the right key for this provider.';
+    else if (status === 401 || status === 403) msg = 'Access was not accepted (' + status + '). Check your API key for this provider, or the team access code if you use the shared connection.';
     else if (status === 404) msg = 'Model not found (404). Update the Model box with a valid model name.';
     else if (status === 413) msg = 'Too much data was sent (413). Try a narrower question or start a New chat.';
     else if (status === 429) msg = 'The free limit was reached (429). Wait a minute, or switch providers.';
@@ -1062,13 +1078,28 @@ var AiLogic = (function (L) {
     });
   }
 
-  function buildGeminiRequest(model, key, contents) {
+  // target is either an API key string (direct to the provider, the key goes in a header only)
+  // or { proxy: 'https://...', code: 'team code' } (through the team proxy, which holds the keys).
+  function asTarget(t) { return typeof t === 'string' ? { key: t } : (t || {}); }
+  function proxyBase(t) { return String(t.proxy).replace(/\/+$/, ''); }
+
+  function buildGeminiRequest(model, target, contents) {
+    var t = asTarget(target);
     var m = String(model).trim().replace(/^models\//, '');
+    var headers = { 'Content-Type': 'application/json' };
+    var url;
+    if (t.proxy) {
+      url = proxyBase(t) + '/gemini/' + encodeURIComponent(m);
+      if (t.code) headers['X-Team-Code'] = t.code;
+    } else {
+      url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent';
+      headers['x-goog-api-key'] = t.key;
+    }
     return {
-      url: 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent',
+      url: url,
       init: {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        headers: headers,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: contents,
@@ -1077,12 +1108,22 @@ var AiLogic = (function (L) {
       }
     };
   }
-  function buildGroqRequest(model, key, messages) {
+  function buildGroqRequest(model, target, messages) {
+    var t = asTarget(target);
+    var headers = { 'Content-Type': 'application/json' };
+    var url;
+    if (t.proxy) {
+      url = proxyBase(t) + '/groq';
+      if (t.code) headers['X-Team-Code'] = t.code;
+    } else {
+      url = 'https://api.groq.com/openai/v1/chat/completions';
+      headers['Authorization'] = 'Bearer ' + t.key;
+    }
     return {
-      url: 'https://api.groq.com/openai/v1/chat/completions',
+      url: url,
       init: {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        headers: headers,
         body: JSON.stringify({
           model: String(model).trim(),
           messages: [{ role: 'system', content: SYSTEM_PROMPT }].concat(messages),
@@ -1147,7 +1188,7 @@ var AiLogic = (function (L) {
     var log = o.onLog || function () {}, status = o.onStatus || function () {};
     try {
       hist.push(gem ? { role: 'user', parts: [{ text: o.question }] } : { role: 'user', content: o.question });
-      log({ kind: 'question', text: o.question });
+      log({ kind: 'question', provider: o.provider, text: o.question });
       for (var round = 0; ; round++) {
         status('Thinking…');
         var req = gem ? buildGeminiRequest(o.model, o.key, hist) : buildGroqRequest(o.model, o.key, hist);
@@ -1166,7 +1207,7 @@ var AiLogic = (function (L) {
           var call = turn.calls[i];
           status('Running ' + call.name + '…');
           var r = await o.executeTool(call.name, call.args);
-          log({ kind: 'tool', name: call.name, args: call.args, text: r.text, truncated: r.truncated });
+          log({ kind: 'tool', provider: o.provider, name: call.name, args: call.args, text: r.text, truncated: r.truncated });
           outs.push({ call: call, r: r });
         }
         if (gem) {
@@ -1185,11 +1226,77 @@ var AiLogic = (function (L) {
     }
   }
 
+  // ---------- fallback between providers ----------
+  var COOLDOWN_MS = 60000;
+
+  // Limits, provider trouble, oversized request or no connection: try the next provider.
+  // Setup problems (400, 401, 403, 404) are shown, not hidden by a fallback.
+  function isFallbackStatus(s) { return s === 0 || s === 413 || s === 429 || s >= 500; }
+
+  // A provider that was not used for the latest turns has not seen them. Rebuild its
+  // history from the plain question/answer transcript (tool exchanges are not carried over).
+  function seedHistory(provider, transcript) {
+    var out = [];
+    transcript.forEach(function (t) {
+      if (provider === 'gemini') {
+        out.push({ role: 'user', parts: [{ text: t.q }] });
+        out.push({ role: 'model', parts: [{ text: t.a }] });
+      } else {
+        out.push({ role: 'user', content: t.q });
+        out.push({ role: 'assistant', content: t.a });
+      }
+    });
+    return out;
+  }
+
+  function newStore() {
+    return {
+      hist: { gemini: { msgs: [], upTo: 0 }, groq: { msgs: [], upTo: 0 } },
+      transcript: [], cooldown: {}
+    };
+  }
+
+  // Ask one question, trying o.chain in order: [{ provider, label, model, target }].
+  // A provider that just hit a rate limit (429) is skipped for a minute.
+  // Resolves { text, provider, switched:[{ from, status }], stopped? } or throws.
+  async function runWithFallback(o) {
+    var store = o.store, now = o.now ? o.now() : Date.now();
+    var chain = o.chain.filter(function (c) { return !(store.cooldown[c.provider] > now); });
+    if (!chain.length) chain = o.chain.slice();
+    var errors = [], switched = [];
+    for (var i = 0; i < chain.length; i++) {
+      var c = chain[i], h = store.hist[c.provider];
+      if (h.upTo !== store.transcript.length) {
+        h.msgs = seedHistory(c.provider, store.transcript);
+        h.upTo = store.transcript.length;
+      }
+      try {
+        var res = await runChat({
+          provider: c.provider, model: c.model, key: c.target, history: h.msgs, question: o.question,
+          executeTool: o.executeTool, fetchFn: o.fetchFn, onLog: o.onLog, onStatus: o.onStatus
+        });
+        if (res.stopped) return { text: res.text, stopped: true, provider: c.provider, switched: switched };
+        store.transcript.push({ q: o.question, a: res.text });
+        h.upTo = store.transcript.length;
+        return { text: res.text, provider: c.provider, switched: switched };
+      } catch (e) {
+        errors.push({ label: c.label || c.provider, message: e && e.message ? e.message : String(e) });
+        if (!isFallbackStatus(e && e.status)) break;
+        if (e.status === 429) store.cooldown[c.provider] = now + COOLDOWN_MS;
+        switched.push({ from: c.label || c.provider, status: e.status });
+      }
+    }
+    var err = new Error(errors.length === 1 ? errors[0].message
+      : errors.map(function (x) { return x.label + ': ' + x.message; }).join('\n\n'));
+    throw err;
+  }
+
   return {
     SYSTEM_PROMPT: SYSTEM_PROMPT, PROVIDERS: PROVIDERS, TOOLS: TOOLS,
     MAX_RESULT_CHARS: MAX_RESULT_CHARS, MAX_ROUNDS: MAX_ROUNDS,
     runTool: runTool, capResult: capResult, executeTool: executeTool, friendlyError: friendlyError,
-    buildGeminiRequest: buildGeminiRequest, buildGroqRequest: buildGroqRequest, runChat: runChat
+    buildGeminiRequest: buildGeminiRequest, buildGroqRequest: buildGroqRequest, runChat: runChat,
+    isFallbackStatus: isFallbackStatus, seedHistory: seedHistory, newStore: newStore, runWithFallback: runWithFallback
   };
 })(ImeiLogic);
 if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
@@ -1202,11 +1309,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   if (typeof AiLogic === 'undefined') return;
   var A = AiLogic, KEY = 'imeiLookup.ai';
 
+  // Address of the team proxy (see worker/README.md). While it still contains "YOUR-",
+  // the shared connection is off and people use their own API keys.
+  var PROXY_URL = 'https://imei-lookup-ai.walter-3a7.workers.dev';
+  var proxyOn = PROXY_URL.indexOf('YOUR-') === -1;
+
   var state = {
-    provider: 'gemini',
+    provider: 'groq',            // primary provider when people use their own keys
     gemini: { key: '', model: A.PROVIDERS.gemini.defaultModel },
     groq: { key: '', model: A.PROVIDERS.groq.defaultModel },
-    hist: { gemini: [], groq: [] },
+    teamCode: '',
+    own: false,                  // "use my own keys" (always true when there is no proxy)
+    store: A.newStore(),         // per-provider histories, transcript, rate-limit cooldowns
     busy: false
   };
 
@@ -1217,6 +1331,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     if (text != null) e.textContent = text;
     return e;
   }
+  function label(p) { return A.PROVIDERS[p].label; }
+  function useOwn() { return !proxyOn || state.own; }
 
   // ---------- saved settings (localStorage, never throws) ----------
   function load() {
@@ -1224,6 +1340,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
       var s = JSON.parse(window.localStorage.getItem(KEY) || 'null');
       if (!s) return;
       if (s.provider === 'gemini' || s.provider === 'groq') state.provider = s.provider;
+      if (typeof s.teamCode === 'string') state.teamCode = s.teamCode;
+      if (s.own === true) state.own = true;
       ['gemini', 'groq'].forEach(function (p) {
         if (s[p] && typeof s[p].key === 'string') state[p].key = s[p].key;
         if (s[p] && typeof s[p].model === 'string' && s[p].model.trim()) state[p].model = s[p].model;
@@ -1232,8 +1350,28 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   }
   function save() {
     try {
-      window.localStorage.setItem(KEY, JSON.stringify({ provider: state.provider, gemini: state.gemini, groq: state.groq }));
+      window.localStorage.setItem(KEY, JSON.stringify({
+        provider: state.provider, teamCode: state.teamCode, own: state.own, gemini: state.gemini, groq: state.groq
+      }));
     } catch (e) { /* ignore */ }
+  }
+
+  // ---------- which providers to try, in order ----------
+  function modelOf(p) {
+    return useOwn() ? (state[p].model.trim() || A.PROVIDERS[p].defaultModel) : A.PROVIDERS[p].defaultModel;
+  }
+  function buildChain() {
+    var order, target;
+    if (useOwn()) {
+      var first = state.provider, second = first === 'groq' ? 'gemini' : 'groq';
+      order = [first, second].filter(function (p) { return state[p].key; });
+    } else {
+      order = ['groq', 'gemini']; // Groq first, Gemini as the backup
+    }
+    return order.map(function (p) {
+      target = useOwn() ? state[p].key : { proxy: PROXY_URL, code: state.teamCode };
+      return { provider: p, label: label(p), model: modelOf(p), target: target };
+    });
   }
 
   // ---------- tabs ----------
@@ -1248,9 +1386,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     $('tabBtnAI').tabIndex = ai ? 0 : -1;
   }
 
-  // ---------- provider panel ----------
+  // ---------- connection panel ----------
   function refreshUi() {
     var p = state.provider, cfg = state[p], meta = A.PROVIDERS[p];
+    $('aiProxyBox').hidden = !proxyOn;
+    $('aiOwnBox').hidden = !useOwn();
+    $('aiOwn').checked = state.own;
+    $('aiTeamCode').value = state.teamCode;
+    $('aiProxyNote').textContent = 'Requests pass through your team\'s server, which only forwards them. ' +
+      A.PROVIDERS.groq.note + ' ' + A.PROVIDERS.gemini.note;
     $('aiProvider').value = p;
     $('aiNote').textContent = meta.note;
     $('aiModel').value = cfg.model;
@@ -1261,7 +1405,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     updateOff();
   }
   function updateOff() {
-    var has = !!state[state.provider].key;
+    var has = buildChain().length > 0;
     $('aiOff').hidden = has;
     $('aiSend').disabled = !has || state.busy;
   }
@@ -1275,8 +1419,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     m.scrollIntoView({ block: 'nearest' });
     return m;
   }
-  function addAnswer(text) {
-    var m = addMessage('ai', 'AI', text);
+  function addAnswer(text, provider) {
+    var m = addMessage('ai', 'AI (' + label(provider) + ')', text);
     var btn = el('button', 'small', 'Copy answer');
     btn.type = 'button';
     btn.addEventListener('click', function () {
@@ -1287,11 +1431,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
 
   function addLog(entry) {
     var box = el('div', 'log-entry');
+    var to = label(entry.provider) + (useOwn() ? '' : ' (via team server)');
     if (entry.kind === 'question') {
-      box.appendChild(el('div', 'what', 'Question sent'));
+      box.appendChild(el('div', 'what', 'Question sent to ' + to));
       box.appendChild(el('pre', null, entry.text));
     } else {
-      var what = 'Tool result sent: ' + entry.name + '(' + JSON.stringify(entry.args) + ')';
+      var what = 'Tool result sent to ' + to + ': ' + entry.name + '(' + JSON.stringify(entry.args) + ')';
       if (entry.truncated) what += ' [cut off at ' + A.MAX_RESULT_CHARS + ' characters]';
       box.appendChild(el('div', 'what', what));
       box.appendChild(el('pre', null, entry.text));
@@ -1312,26 +1457,27 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   async function send() {
     if (state.busy) return;
     var q = $('aiInput').value.trim();
-    var p = state.provider, cfg = state[p];
     if (!q) return;
-    if (!cfg.key) { updateOff(); return; }
+    var chain = buildChain();
+    if (!chain.length) { updateOff(); return; }
     state.busy = true;
     updateOff();
     $('aiInput').value = '';
     addMessage('user', 'You', q);
     try {
-      var res = await A.runChat({
-        provider: p,
-        model: cfg.model.trim() || A.PROVIDERS[p].defaultModel,
-        key: cfg.key,
-        history: state.hist[p],
+      var res = await A.runWithFallback({
+        chain: chain,
+        store: state.store,
         question: q,
         executeTool: execTool,
         fetchFn: function (url, init) { return window.fetch(url, init); },
         onLog: addLog,
         onStatus: function (t) { $('aiStatus').textContent = t; }
       });
-      addAnswer(res.text);
+      if (res.provider !== chain[0].provider) {
+        addMessage('sys', null, 'Answered by ' + label(res.provider) + ' because ' + chain[0].label + ' is unavailable right now.');
+      }
+      addAnswer(res.text, res.provider);
     } catch (e) {
       addMessage('err', 'Error', e && e.message ? e.message : String(e));
     } finally {
@@ -1342,7 +1488,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   }
 
   function newChat() {
-    state.hist = { gemini: [], groq: [] };
+    state.store = A.newStore();
     $('aiChat').textContent = '';
     $('aiLogBody').textContent = '';
     $('aiStatus').textContent = '';
@@ -1368,13 +1514,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     setTab(toAi ? 'ai' : 'lookup');
     $(toAi ? 'tabBtnAI' : 'tabBtnLookup').focus();
   });
+  $('aiOwn').addEventListener('change', function () {
+    state.own = $('aiOwn').checked;
+    save();
+    refreshUi();
+  });
+  $('aiTeamCode').addEventListener('input', function () { state.teamCode = $('aiTeamCode').value.trim(); save(); });
   $('aiProvider').addEventListener('change', function () {
     state.provider = $('aiProvider').value;
     save();
     refreshUi();
-    if ($('aiChat').children.length) {
-      addMessage('sys', null, 'Switched to ' + A.PROVIDERS[state.provider].label + '. It does not see the earlier messages.');
-    }
   });
   $('aiModel').addEventListener('input', function () { state[state.provider].model = $('aiModel').value; save(); });
   $('aiKey').addEventListener('input', function () { state[state.provider].key = $('aiKey').value.trim(); save(); updateOff(); });
@@ -1386,7 +1535,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   });
 
   refreshUi();
-  $('aiSettings').open = !state[state.provider].key;
+  $('aiSettings').open = useOwn() && buildChain().length === 0;
   $('tabs').hidden = false;
 })();
 </script>
