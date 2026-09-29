@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<title>IMEI Lookup</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --surface: #f4f7f5;
+  --surface-2: #e9efec;
+  --text: #1c2521;
+  --muted: #5a6862;
+  --border: #cbd6d1;
+  --accent: #166e54;
+  --accent-text: #ffffff;
+  --accent-soft: #dcefe8;
+  --warn-bg: #fff4d6;
+  --warn-text: #6b4b00;
+  --err-bg: #fde8e6;
+  --err-text: #8a1f16;
+  --focus: #0b57d0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171b19;
+    --surface: #202623;
+    --surface-2: #2a312e;
+    --text: #e8eeeb;
+    --muted: #a3b0aa;
+    --border: #3a4541;
+    --accent: #4cb992;
+    --accent-text: #0d1a15;
+    --accent-soft: #1f3a30;
+    --warn-bg: #3a3016;
+    --warn-text: #f1d58a;
+    --err-bg: #3d1f1c;
+    --err-text: #f4b3ac;
+    --focus: #8ab4f8;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  padding: 12px;
+  min-width: 280px;
+}
+h1 { font-size: 16px; margin: 0; font-weight: 600; }
+button, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.top-actions { display: flex; gap: 6px; }
+
+label { display: block; font-weight: 600; margin: 0 0 4px; }
+textarea {
+  width: 100%; min-height: 96px; resize: vertical; padding: 6px 8px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px;
+}
+select {
+  width: 100%; padding: 4px 6px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 4px;
+}
+.row { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.hint { color: var(--muted); font-size: 12px; }
+
+button {
+  cursor: pointer; padding: 5px 12px; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+button:hover { background: var(--surface-2); }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); }
+button.small { padding: 2px 8px; font-size: 12px; }
+button:disabled { opacity: .55; cursor: default; }
+
+.status { color: var(--muted); font-size: 12px; margin: 6px 0; }
+.banner { padding: 6px 8px; border-radius: 4px; margin: 8px 0; font-size: 12px; }
+.banner.warn { background: var(--warn-bg); color: var(--warn-text); }
+.banner.err { background: var(--err-bg); color: var(--err-text); }
+.banner.info { background: var(--accent-soft); color: var(--text); }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin: 8px 0; }
+.panel .field { margin-bottom: 8px; }
+
+#outside { display: none; padding: 16px 4px; font-size: 14px; }
+
+.card { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 6px; padding: 8px 10px; margin: 10px 0; background: var(--surface); }
+.card.nomatch { border-left-color: var(--muted); }
+.card.bad { border-left-color: #c0392b; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.imei { font-family: Consolas, "Cascadia Mono", monospace; font-weight: 600; }
+.count { color: var(--muted); font-size: 12px; }
+.note { font-size: 12px; margin-top: 4px; color: var(--muted); }
+.note.warn { color: var(--warn-text); background: var(--warn-bg); padding: 2px 6px; border-radius: 3px; }
+.note.err { color: var(--err-text); background: var(--err-bg); padding: 2px 6px; border-radius: 3px; }
+.match { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.device { font-size: 20px; font-weight: 600; color: var(--accent); overflow-wrap: anywhere; }
+.device.empty { color: var(--muted); font-size: 14px; font-weight: 400; }
+dl { display: grid; grid-template-columns: minmax(70px, 38%) 1fr; gap: 2px 8px; margin: 6px 0 8px; font-size: 12px; }
+dt { color: var(--muted); overflow-wrap: anywhere; }
+dd { margin: 0; overflow-wrap: anywhere; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+th { color: var(--muted); font-weight: 600; }
+td.mono { font-family: Consolas, "Cascadia Mono", monospace; }
+.summary h2 { font-size: 14px; margin: 14px 0 0; }
+.table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<div id="outside" role="alert">This page only works inside Excel.</div>
+
+<div id="app">
+  <header class="top">
+    <h1>IMEI Lookup</h1>
+    <div class="top-actions">
+      <button id="btnSettings" class="small" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+      <button id="btnRefresh" class="small" type="button" title="Re-read the table from the workbook">Refresh</button>
+    </div>
+  </header>
+
+  <div id="tableStatus" class="status" aria-live="polite"></div>
+  <div id="staleBanner" class="banner warn" hidden>The sheet changed since it was read. It will reload on the next lookup; row numbers in the results below may be out of date.</div>
+
+  <section id="settings" class="panel" hidden>
+    <div class="hint" style="margin-bottom:8px">Pick where the range table is. Used automatically when the "From IMEI" / "To IMEI" headers can't be found, and applied right away if you save.</div>
+    <div class="field"><label for="setSheet">Sheet</label><select id="setSheet"></select></div>
+    <div class="field"><label for="setHeaderRow">Header row</label><select id="setHeaderRow"></select></div>
+    <div class="field"><label for="setFrom">From IMEI column</label><select id="setFrom"></select></div>
+    <div class="field"><label for="setTo">To IMEI column</label><select id="setTo"></select></div>
+    <div class="field"><label for="setDevice">Device Type column</label><select id="setDevice"></select></div>
+    <button id="btnSaveSettings" class="primary" type="button">Save and load</button>
+  </section>
+
+  <div id="errorBox" class="banner err" role="alert" hidden></div>
+
+  <label for="input">Enter one or more IMEIs (one per line)</label>
+  <textarea id="input" spellcheck="false" autocomplete="off" placeholder="e.g. 990008892500567"></textarea>
+  <div class="row">
+    <button id="btnLookup" class="primary" type="button">Lookup</button>
+    <span class="hint">Ctrl+Enter</span>
+  </div>
+
+  <div id="results" aria-live="polite"></div>
+  <div id="summary" class="summary"></div>
+</div>
+
+<!-- ============ Pure logic: runs in the task pane and under node (see test.js) ============ -->
+<script id="imei-logic">
+var ImeiLogic = (function () {
+  'use strict';
+
+  // Luhn check digit for a string of digits that does NOT yet include its check digit.
+  function luhnCheckDigit(body) {
+    var sum = 0, dbl = true;
+    for (var i = body.length - 1; i >= 0; i--) {
+      var d = body.charCodeAt(i) - 48;
+      if (dbl) { d *= 2; if (d > 9) d -= 9; }
+      sum += d;
+      dbl = !dbl;
+    }
+    return (10 - (sum % 10)) % 10;
+  }
+
+  // True if the full digit string (check digit last) passes Luhn.
+  function luhnValid(s) {
+    if (!/^\d{2,}$/.test(s)) return false;
+    return luhnCheckDigit(s.slice(0, -1)) === s.charCodeAt(s.length - 1) - 48;
+  }
+
+  // Normalize user input to a 15-digit IMEI string.
+  // Returns { ok, input, imei, notes:[], warnings:[], error }
+  function normalizeImei(raw) {
+    var input = String(raw == null ? '' : raw);
+    var digits = input.replace(/\D/g, '');
+    var res = { ok: false, input: input.trim(), imei: '', notes: [], warnings: [], error: '' };
+    var n = digits.length;
+    if (n === 0) { res.error = 'No digits found.'; return res; }
+    if (n === 15) {
+      res.imei = digits;
+      if (!luhnValid(digits)) res.warnings.push('Luhn check digit is not valid. Searched anyway.');
+    } else if (n === 14) {
+      var c14 = luhnCheckDigit(digits);
+      res.imei = digits + c14;
+      res.notes.push('14 digits: check digit ' + c14 + ' added.');
+    } else if (n === 16) {
+      var body = digits.slice(0, 14);
+      var c16 = luhnCheckDigit(body);
+      res.imei = body + c16;
+      res.notes.push('16 digits (IMEISV): last 2 digits dropped, check digit ' + c16 + ' added.');
+    } else {
+      res.error = 'Expected 14, 15 or 16 digits but found ' + n + '. Line skipped.';
+      return res;
+    }
+    res.ok = true;
+    return res;
+  }
+
+  // Convert a table cell's displayed text to a zero-padded 15-char string, or null if unusable.
+  function padCell(text) {
+    if (text == null) return null;
+    var s = String(text).trim().replace(/[\s,'\-]/g, '');
+    if (!/^\d{1,15}$/.test(s)) return null;
+    while (s.length < 15) s = '0' + s;
+    return s;
+  }
+
+  // rows: [{ from, to, ... }] with zero-padded 15-char strings. Returns ALL rows containing imei.
+  function findMatches(rows, imei) {
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r.from <= imei && imei <= r.to) out.push(r);
+    }
+    return out;
+  }
+
+  function normHeader(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase(); }
+
+  // Index of the header equal (case-insensitive, trimmed) to name, or -1.
+  function findHeaderIndex(headers, name) {
+    var target = normHeader(name);
+    for (var i = 0; i < headers.length; i++) if (normHeader(headers[i]) === target) return i;
+    return -1;
+  }
+
+  // Tab-separated text with a header row. Cells have tabs/newlines flattened to spaces.
+  function toTsv(header, rows) {
+    function clean(v) { return String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' '); }
+    return [header].concat(rows).map(function (r) { return r.map(clean).join('\t'); }).join('\n');
+  }
+
+  function colLetter(i) {
+    var s = '';
+    for (i = i + 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
+    return s;
+  }
+
+  return {
+    luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
+    padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
+    toTsv: toTsv, colLetter: colLetter
+  };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
+</script>
+
+<!-- ============ Excel + UI ============ -->
+<script id="imei-app">
+(function () {
+  'use strict';
+  var L = ImeiLogic;
+  var STORE_KEY = 'imeiLookup.settings';
+  var CHUNK = 5000;
+
+  var state = {
+    table: null,        // cached parsed table
+    loading: null,      // in-flight load promise
+    override: null,     // settings chosen in the panel this session
+    handlerSheet: null, // sheet with the onChanged handler
+    lastResults: []     // for copy
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  // ---------- localStorage (never throws) ----------
+  function loadSaved() {
+    try { var s = window.localStorage.getItem(STORE_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  }
+  function saveSettings(cfg) {
+    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- messages ----------
+  function showError(msg) { var b = $('errorBox'); b.textContent = msg; b.hidden = !msg; }
+  function setStatus(msg) { $('tableStatus').textContent = msg; }
+
+  // ---------- reading the workbook ----------
+  function usedInfo(ctx, sheet) {
+    var used = sheet.getUsedRange(true);
+    used.load('rowIndex,columnIndex,rowCount,columnCount');
+    return ctx.sync().then(function () { return used; });
+  }
+
+  // Look through every sheet's first 10 used rows for both headers.
+  function detectTable() {
+    return Excel.run(function (ctx) {
+      var sheets = ctx.workbook.worksheets;
+      sheets.load('items/name');
+      return ctx.sync().then(function () {
+        var idx = 0;
+        function next() {
+          if (idx >= sheets.items.length) return null;
+          var sheet = sheets.items[idx++];
+          return usedInfo(ctx, sheet).then(function (used) {
+            var n = Math.min(10, used.rowCount);
+            var top = sheet.getRangeByIndexes(used.rowIndex, used.columnIndex, n, used.columnCount);
+            top.load('text');
+            return ctx.sync().then(function () {
+              for (var r = 0; r < n; r++) {
+                var f = L.findHeaderIndex(top.text[r], 'From IMEI');
+                var t = L.findHeaderIndex(top.text[r], 'To IMEI');
+                if (f >= 0 && t >= 0) {
+                  var d = L.findHeaderIndex(top.text[r], 'Device Type');
+                  return {
+                    sheet: sheet.name, headerRow: used.rowIndex + r,
+                    fromCol: used.columnIndex + f, toCol: used.columnIndex + t,
+                    deviceCol: d >= 0 ? used.columnIndex + d : -1
+                  };
+                }
+              }
+              return next();
+            });
+          }, function () { return next(); }); // empty sheet: getUsedRange throws
+        }
+        return next();
+      });
+    });
+  }
+
+  function readTable(cfg) {
+    return Excel.run(function (ctx) {
+      var sheet = ctx.workbook.worksheets.getItem(cfg.sheet);
+      return usedInfo(ctx, sheet).then(function (used) {
+        var colOffset = used.columnIndex, ncols = used.columnCount;
+        var lastRow = used.rowIndex + used.rowCount - 1;
+        if (cfg.headerRow < used.rowIndex || cfg.headerRow > lastRow) throw new Error('Header row is outside the sheet\'s used range.');
+        if (cfg.fromCol < colOffset || cfg.toCol < colOffset || cfg.fromCol >= colOffset + ncols || cfg.toCol >= colOffset + ncols)
+          throw new Error('From/To columns are outside the sheet\'s used range.');
+        var hdr = sheet.getRangeByIndexes(cfg.headerRow, colOffset, 1, ncols);
+        hdr.load('text');
+        return ctx.sync().then(function () {
+          var headers = hdr.text[0].map(function (h, i) {
+            h = String(h).trim();
+            return h || ('Column ' + L.colLetter(colOffset + i));
+          });
+          var table = {
+            sheet: cfg.sheet, headerRow: cfg.headerRow, colOffset: colOffset, headers: headers,
+            fromIdx: cfg.fromCol - colOffset, toIdx: cfg.toCol - colOffset,
+            deviceIdx: cfg.deviceCol >= 0 ? cfg.deviceCol - colOffset : -1,
+            manufIdx: L.findHeaderIndex(headers, 'Manufacturer'),
+            modelIdx: L.findHeaderIndex(headers, 'Model'),
+            rows: [], skipped: 0, cfg: cfg
+          };
+          var start = cfg.headerRow + 1;
+          function chunk(r0) {
+            if (r0 > lastRow) return table;
+            var n = Math.min(CHUNK, lastRow - r0 + 1);
+            var rng = sheet.getRangeByIndexes(r0, colOffset, n, ncols);
+            rng.load('text');
+            return ctx.sync().then(function () {
+              for (var i = 0; i < n; i++) {
+                var cells = rng.text[i];
+                var ftxt = cells[table.fromIdx], ttxt = cells[table.toIdx];
+                var f = L.padCell(ftxt), t = L.padCell(ttxt);
+                if (f === null || t === null) {
+                  if (String(ftxt).trim() !== '' || String(ttxt).trim() !== '') table.skipped++;
+                  continue;
+                }
+                table.rows.push({ from: f, to: t, sheetRow: r0 + i, cells: cells });
+              }
+              return chunk(r0 + n);
+            });
+          }
+          return chunk(start);
+        });
+      });
+    });
+  }
+
+  function savedConfigUsable() {
+    var s = loadSaved();
+    if (!s || typeof s.sheet !== 'string') return Promise.resolve(null);
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getItemOrNullObject(s.sheet);
+      ws.load('isNullObject');
+      return ctx.sync().then(function () { return ws.isNullObject ? null : s; });
+    }).catch(function () { return null; });
+  }
+
+  function resolveConfig() {
+    if (state.override) return Promise.resolve(state.override);
+    return detectTable().then(function (found) {
+      return found || savedConfigUsable();
+    });
+  }
+
+  function registerChangeHandler(sheetName) {
+    if (state.handlerSheet === sheetName) return;
+    try {
+      if (!Office.context.requirements.isSetSupported('ExcelApi', '1.7')) return;
+    } catch (e) { return; }
+    Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getItem(sheetName);
+      ws.onChanged.add(function () {
+        state.table = null;
+        $('staleBanner').hidden = false;
+        return Promise.resolve();
+      });
+      return ctx.sync().then(function () { state.handlerSheet = sheetName; });
+    }).catch(function () { /* change tracking is best-effort; Refresh still works */ });
+  }
+
+  // Returns the cached table, loading it if needed. Resolves null when no table could be found.
+  function ensureTable(force) {
+    if (force) state.table = null;
+    if (state.table) return Promise.resolve(state.table);
+    if (state.loading) return state.loading;
+    setStatus('Reading table…');
+    state.loading = resolveConfig().then(function (cfg) {
+      if (!cfg) return null;
+      return readTable(cfg);
+    }).then(function (table) {
+      state.loading = null;
+      if (!table) {
+        setStatus('No table found. Use Settings to choose it.');
+        openSettings(true);
+        return null;
+      }
+      state.table = table;
+      $('staleBanner').hidden = true;
+      var msg = table.rows.length.toLocaleString() + ' ranges loaded from "' + table.sheet + '" (header row ' + (table.headerRow + 1) + ').';
+      if (table.skipped) msg += ' ' + table.skipped.toLocaleString() + ' rows skipped: From/To not a plain number.';
+      setStatus(msg);
+      registerChangeHandler(table.sheet);
+      return table;
+    }, function (err) {
+      state.loading = null;
+      setStatus('');
+      throw err;
+    });
+    return state.loading;
+  }
+
+  // ---------- settings panel ----------
+  function fillSelect(sel, items, selected) {
+    sel.textContent = '';
+    items.forEach(function (it) {
+      var o = document.createElement('option');
+      o.value = it.value; o.textContent = it.label;
+      if (String(it.value) === String(selected)) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function refreshColumnChoices(preselect) {
+    var sheetName = $('setSheet').value;
+    var hRow = parseInt($('setHeaderRow').value, 10) - 1;
+    if (!sheetName || isNaN(hRow)) return Promise.resolve();
+    return Excel.run(function (ctx) {
+      var sheet = ctx.workbook.worksheets.getItem(sheetName);
+      return usedInfo(ctx, sheet).then(function (used) {
+        var rng = sheet.getRangeByIndexes(hRow, used.columnIndex, 1, used.columnCount);
+        rng.load('text');
+        return ctx.sync().then(function () {
+          var cols = rng.text[0].map(function (h, i) {
+            var abs = used.columnIndex + i;
+            return { value: abs, label: L.colLetter(abs) + ': ' + (String(h).trim() || '(blank)') };
+          });
+          var pick = function (name, key) {
+            if (preselect && preselect[key] != null) return preselect[key];
+            var i = L.findHeaderIndex(rng.text[0], name);
+            return i >= 0 ? used.columnIndex + i : '';
+          };
+          fillSelect($('setFrom'), cols, pick('From IMEI', 'fromCol'));
+          fillSelect($('setTo'), cols, pick('To IMEI', 'toCol'));
+          fillSelect($('setDevice'), [{ value: -1, label: '(none)' }].concat(cols), pick('Device Type', 'deviceCol'));
+        });
+      });
+    }).catch(function () {
+      fillSelect($('setFrom'), [], ''); fillSelect($('setTo'), [], ''); fillSelect($('setDevice'), [{ value: -1, label: '(none)' }], -1);
+    });
+  }
+
+  function openSettings(show) {
+    var panel = $('settings');
+    panel.hidden = !show;
+    $('btnSettings').setAttribute('aria-expanded', String(show));
+    if (!show) return;
+    var cur = state.override || (state.table && state.table.cfg) || loadSaved() || {};
+    Excel.run(function (ctx) {
+      var sheets = ctx.workbook.worksheets;
+      sheets.load('items/name');
+      return ctx.sync().then(function () {
+        var names = sheets.items.map(function (s) { return { value: s.name, label: s.name }; });
+        fillSelect($('setSheet'), names, cur.sheet);
+        var rows = [];
+        for (var i = 1; i <= 20; i++) rows.push({ value: i, label: String(i) });
+        fillSelect($('setHeaderRow'), rows, cur.headerRow != null ? cur.headerRow + 1 : 1);
+        return refreshColumnChoices(cur.sheet ? cur : null);
+      });
+    }).catch(function (e) { showError('Could not read the sheet list: ' + (e && e.message ? e.message : e)); });
+  }
+
+  function saveAndLoad() {
+    var fromCol = parseInt($('setFrom').value, 10), toCol = parseInt($('setTo').value, 10);
+    if (isNaN(fromCol) || isNaN(toCol)) { showError('Choose the From and To columns first.'); return; }
+    var cfg = {
+      sheet: $('setSheet').value,
+      headerRow: parseInt($('setHeaderRow').value, 10) - 1,
+      fromCol: fromCol, toCol: toCol,
+      deviceCol: parseInt($('setDevice').value, 10)
+    };
+    if (isNaN(cfg.deviceCol)) cfg.deviceCol = -1;
+    showError('');
+    state.override = cfg;
+    saveSettings(cfg);
+    ensureTable(true).then(function (t) { if (t) openSettings(false); }).catch(showLoadError);
+  }
+
+  function showLoadError(err) {
+    showError('Could not read the workbook: ' + (err && err.message ? err.message : err));
+  }
+
+  // ---------- rendering ----------
+  function deviceOf(table, row) {
+    return table.deviceIdx >= 0 ? String(row.cells[table.deviceIdx]).trim() : '';
+  }
+  function cellOf(table, row, idx) {
+    return idx >= 0 ? String(row.cells[idx]).trim() : '';
+  }
+
+  function goToRow(table, row) {
+    showError('');
+    Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getItem(table.sheet);
+      ws.activate();
+      ws.getRangeByIndexes(row.sheetRow, table.colOffset, 1, table.headers.length).select();
+      return ctx.sync();
+    }).catch(function (e) { showError('Could not select the row: ' + (e && e.message ? e.message : e)); });
+  }
+
+  function renderCard(norm, matches, table) {
+    var cls = 'card' + (!norm.ok ? ' bad' : matches.length === 0 ? ' nomatch' : '');
+    var card = el('section', cls);
+    var head = el('div', 'card-head');
+    head.appendChild(el('span', 'imei', norm.ok ? norm.imei : (norm.input || '(empty)')));
+    if (norm.ok && matches.length > 1) head.appendChild(el('span', 'count', matches.length + ' matching rows'));
+    card.appendChild(head);
+    norm.notes.forEach(function (n) { card.appendChild(el('div', 'note', n)); });
+    norm.warnings.forEach(function (n) { card.appendChild(el('div', 'note warn', n)); });
+    if (!norm.ok) { card.appendChild(el('div', 'note err', norm.error)); return card; }
+    if (matches.length === 0) { card.appendChild(el('div', 'note', 'No matching range.')); return card; }
+
+    matches.forEach(function (row) {
+      var m = el('div', 'match');
+      var dev = deviceOf(table, row);
+      m.appendChild(el('div', dev ? 'device' : 'device empty', dev || '(no Device Type)'));
+      var dl = document.createElement('dl');
+      table.headers.forEach(function (h, i) {
+        if (i === table.deviceIdx) return;
+        var v = String(row.cells[i]).trim();
+        if (!v) return;
+        dl.appendChild(el('dt', null, h));
+        dl.appendChild(el('dd', null, v));
+      });
+      m.appendChild(dl);
+      var btn = el('button', 'small', 'Go to row ' + (row.sheetRow + 1));
+      btn.type = 'button';
+      btn.addEventListener('click', function () { goToRow(table, row); });
+      m.appendChild(btn);
+      card.appendChild(m);
+    });
+    return card;
+  }
+
+  function uniqueJoin(list) {
+    var seen = {}, out = [];
+    list.forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
+    return out.join(' | ');
+  }
+
+  function summaryRow(item, table) {
+    if (!item.norm.ok) return [item.norm.input, 'Invalid IMEI', '', ''];
+    if (item.matches.length === 0) return [item.norm.imei, 'No matching range', '', ''];
+    return [
+      item.norm.imei,
+      uniqueJoin(item.matches.map(function (r) { return deviceOf(table, r); })),
+      uniqueJoin(item.matches.map(function (r) { return cellOf(table, r, table.manufIdx); })),
+      uniqueJoin(item.matches.map(function (r) { return cellOf(table, r, table.modelIdx); }))
+    ];
+  }
+
+  function copyText(text, btn) {
+    function done(ok) {
+      var old = btn.textContent;
+      btn.textContent = ok ? 'Copied' : 'Copy failed';
+      setTimeout(function () { btn.textContent = old; }, 1500);
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else fallback();
+  }
+
+  function renderSummary(items, table) {
+    var box = $('summary');
+    box.textContent = '';
+    if (items.length < 2) return;
+    var header = ['IMEI', 'Device Type', 'Manufacturer', 'Model'];
+    var rows = items.map(function (it) { return summaryRow(it, table); });
+
+    box.appendChild(el('h2', null, 'Summary'));
+    var wrap = el('div', 'table-wrap');
+    var tbl = document.createElement('table');
+    var thead = document.createElement('thead'), htr = document.createElement('tr');
+    header.forEach(function (h) { htr.appendChild(el('th', null, h)); });
+    thead.appendChild(htr); tbl.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      r.forEach(function (v, i) { tr.appendChild(el('td', i === 0 ? 'mono' : null, v)); });
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody); wrap.appendChild(tbl); box.appendChild(wrap);
+
+    var row = el('div', 'row');
+    var btn = el('button', null, 'Copy results');
+    btn.type = 'button';
+    btn.addEventListener('click', function () { copyText(L.toTsv(header, rows), btn); });
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
+
+  // ---------- lookup ----------
+  function runLookup() {
+    showError('');
+    var lines = $('input').value.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+    $('results').textContent = '';
+    $('summary').textContent = '';
+    if (!lines.length) { showError('Enter at least one IMEI.'); return; }
+
+    var norms = lines.map(L.normalizeImei);
+    var btn = $('btnLookup');
+    btn.disabled = true;
+
+    var needTable = norms.some(function (n) { return n.ok; });
+    var tableP = needTable ? ensureTable(false) : Promise.resolve(null);
+    tableP.then(function (table) {
+      if (needTable && !table) { showError('The range table was not found. Choose it in Settings.'); return; }
+      var items = norms.map(function (n) {
+        return { norm: n, matches: n.ok ? L.findMatches(table.rows, n.imei) : [] };
+      });
+      var frag = document.createDocumentFragment();
+      items.forEach(function (it) { frag.appendChild(renderCard(it.norm, it.matches, table)); });
+      $('results').appendChild(frag);
+      if (table) renderSummary(items, table);
+    }).catch(showLoadError).then(function () { btn.disabled = false; });
+  }
+
+  // ---------- startup ----------
+  function init() {
+    $('btnLookup').addEventListener('click', runLookup);
+    $('input').addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runLookup(); }
+    });
+    $('btnRefresh').addEventListener('click', function () {
+      showError('');
+      ensureTable(true).catch(showLoadError);
+    });
+    $('btnSettings').addEventListener('click', function () { openSettings($('settings').hidden); });
+    $('btnSaveSettings').addEventListener('click', saveAndLoad);
+    $('setSheet').addEventListener('change', function () {
+      // default the header row to the first used row of the chosen sheet
+      Excel.run(function (ctx) {
+        return usedInfo(ctx, ctx.workbook.worksheets.getItem($('setSheet').value));
+      }).then(function (used) { $('setHeaderRow').value = String(Math.min(20, used.rowIndex + 1)); })
+        .catch(function () {})
+        .then(function () { return refreshColumnChoices(null); });
+    });
+    $('setHeaderRow').addEventListener('change', function () { refreshColumnChoices(null); });
+    ensureTable(false).catch(showLoadError);
+  }
+
+  function showOutside() {
+    $('app').hidden = true;
+    $('outside').style.display = 'block';
+  }
+
+  if (typeof Office === 'undefined' || typeof Office.onReady !== 'function') {
+    showOutside();
+  } else {
+    Office.onReady(function (info) {
+      if (info && info.host === Office.HostType.Excel) init(); else showOutside();
+    });
+  }
+})();
+</script>
+</body>
+</html>
