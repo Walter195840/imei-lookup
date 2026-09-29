@@ -176,8 +176,25 @@ details.log > summary { cursor: pointer; font-weight: 600; }
 .md .table-wrap { margin: 0 0 8px; }
 .composer-wrap { position: sticky; bottom: 0; background: var(--bg); padding: 8px 0 2px; margin-top: 8px; border-top: 1px solid var(--border); }
 .composer { display: flex; gap: 6px; align-items: flex-end; }
-.composer textarea { flex: 1; min-height: 36px; max-height: 140px; resize: none; overflow-y: auto; }
-.composer-hint { margin-top: 2px; }
+.composer textarea { flex: 1; min-width: 0; min-height: 36px; max-height: 140px; resize: none; overflow-y: hidden; }
+.composer-wrap { padding-bottom: 6px; }
+
+/* ---- calmer chrome ---- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.statusbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
+.statusbar .status { margin: 3px 0 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.top-actions { display: flex; gap: 2px; flex-shrink: 0; }
+button.ghost { background: none; border-color: transparent; color: var(--muted); }
+button.ghost:hover { background: var(--surface-2); color: var(--text); }
+.push { margin-left: auto; }
+.hint.tiny { font-size: 11px; margin-top: 10px; }
+.tabs button { flex: 1; text-align: center; }
+.empty { padding: 14px 2px 6px; }
+.empty-title { font-size: 15px; margin-bottom: 4px; }
+.chips { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+.chip { padding: 5px 12px; font-size: 12px; }
+.ai-bar > button { margin-top: 0; }
+.ai-bar details.panel.compact { padding: 6px 10px; }
 </style>
 </head>
 <body>
@@ -185,13 +202,7 @@ details.log > summary { cursor: pointer; font-weight: 600; }
 <div id="outside" role="alert">This page only works inside Excel.</div>
 
 <div id="app">
-  <header class="top">
-    <h1>IMEI Lookup</h1>
-    <div class="top-actions" id="lookupActions">
-      <button id="btnSettings" class="small" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
-      <button id="btnRefresh" class="small" type="button" title="Re-read the table from the workbook">Refresh</button>
-    </div>
-  </header>
+  <h1 class="sr-only">IMEI Lookup</h1>
 
   <!-- Shown by the Ask AI script once it has loaded; Lookup works without it -->
   <div class="tabs" id="tabs" role="tablist" aria-label="IMEI Lookup sections" hidden>
@@ -200,7 +211,13 @@ details.log > summary { cursor: pointer; font-weight: 600; }
   </div>
 
 <div id="tabLookup" role="tabpanel" aria-labelledby="tabBtnLookup">
-  <div id="tableStatus" class="status" aria-live="polite"></div>
+  <div class="statusbar">
+    <div id="tableStatus" class="status" aria-live="polite"></div>
+    <div class="top-actions" id="lookupActions">
+      <button id="btnRefresh" class="small ghost" type="button" title="Re-read the table from the workbook">Refresh</button>
+      <button id="btnSettings" class="small ghost" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+    </div>
+  </div>
   <div id="staleBanner" class="banner warn" hidden>The sheet changed since it was read. It will reload on the next lookup; row numbers in the results below may be out of date.</div>
 
   <section id="settings" class="panel" hidden>
@@ -218,10 +235,10 @@ details.log > summary { cursor: pointer; font-weight: 600; }
   <label for="input">Enter one or more IMEIs (one per line)</label>
   <textarea id="input" spellcheck="false" autocomplete="off" placeholder="e.g. 990008892500567"></textarea>
   <div class="row">
-    <button id="btnLookup" class="primary" type="button">Lookup</button>
-    <button id="btnSelection" type="button" title="Fill the box with the cells currently selected in the sheet, then look them up">Use selection</button>
-    <button id="btnClear" type="button">Clear</button>
-    <span class="hint">Ctrl+Enter</span>
+    <button id="btnLookup" class="primary" type="button" title="Ctrl+Enter">Lookup</button>
+    <button id="btnSelection" type="button" class="ghost" title="Fill the box with the cells currently selected in the sheet, then look them up">Use selection</button>
+    <button id="btnClear" type="button" class="ghost">Clear</button>
+    <span class="hint push">Ctrl+Enter</span>
   </div>
 
   <div id="results" aria-live="polite"></div>
@@ -265,25 +282,26 @@ details.log > summary { cursor: pointer; font-weight: 600; }
         <button id="aiClearKeys" class="small" type="button">Clear saved keys</button>
       </div>
     </details>
-    <button id="aiNew" class="small" type="button">New chat</button>
+    <button id="aiNew" class="small ghost" type="button" hidden>New chat</button>
   </div>
 
   <div id="aiOff" class="banner info">Ask AI is off until you paste an API key above.</div>
 
   <div id="aiEmpty" class="empty">
     <div class="empty-title">Ask about your IMEI table</div>
-    <div class="hint">Your sheet is never uploaded. The AI runs lookups through this add-in, and only those results are sent. Open "What was sent to the AI" to see exactly what.</div>
+    <div class="hint">Your sheet never leaves Excel. Only lookup results are sent to the AI.</div>
     <div class="chips">
-      <button type="button" class="chip" data-fill="What device is ">What device is an IMEI?</button>
+      <button type="button" class="chip" data-fill="What device is ">Look up an IMEI</button>
       <button type="button" class="chip" data-send="List the columns in the table.">List the columns</button>
-      <button type="button" class="chip" data-fill="Find rows where Manufacturer contains ">Find rows by manufacturer</button>
+      <button type="button" class="chip" data-fill="Find rows where Manufacturer contains ">Find by manufacturer</button>
     </div>
+    <div class="hint tiny">Enter sends. Shift+Enter adds a line.</div>
   </div>
 
   <div id="aiChat" class="chat" aria-live="polite"></div>
   <div id="aiStatus" class="status" aria-live="polite"></div>
 
-  <details id="aiLog" class="log">
+  <details id="aiLog" class="log" hidden>
     <summary>What was sent to the AI</summary>
     <div class="hint" style="margin-top:6px">Every question and tool result sent to the provider is listed here. Earlier messages in the chat are sent again with each question, along with the instructions and tool definitions (no sheet data).</div>
     <div id="aiLogBody"></div>
@@ -291,10 +309,9 @@ details.log > summary { cursor: pointer; font-weight: 600; }
 
   <div class="composer-wrap">
     <div class="composer">
-      <textarea id="aiInput" rows="1" aria-label="Ask about your IMEI table" placeholder="Ask about an IMEI or the table…"></textarea>
+      <textarea id="aiInput" rows="1" aria-label="Ask about your IMEI table" title="Enter to send, Shift+Enter for a new line" placeholder="Ask a question…"></textarea>
       <button id="aiSend" class="primary" type="button">Send</button>
     </div>
-    <div class="hint composer-hint">Enter to send. Shift+Enter for a new line.</div>
   </div>
 </div>
 
@@ -612,9 +629,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       }
       state.table = table;
       $('staleBanner').hidden = true;
-      var msg = table.rows.length.toLocaleString() + ' ranges loaded from "' + table.sheet + '" (header row ' + (table.headerRow + 1) + ').';
-      if (table.skipped) msg += ' ' + table.skipped.toLocaleString() + ' rows skipped: From/To not a plain number.';
+      var msg = table.rows.length.toLocaleString() + ' ranges from "' + table.sheet + '"';
+      if (table.skipped) msg += '. ' + table.skipped.toLocaleString() + ' rows skipped: From/To not a plain number.';
       setStatus(msg);
+      $('tableStatus').title = 'Header row ' + (table.headerRow + 1) + ' on sheet "' + table.sheet + '"';
       registerChangeHandler(table.sheet);
       return table;
     }, function (err) {
@@ -1607,7 +1625,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return root;
   }
 
-  function showChat() { $('aiEmpty').hidden = $('aiChat').children.length > 0; }
+  // The empty-state help shows only before the first message; New chat and the sent-data log only after.
+  function showChat() {
+    var has = $('aiChat').children.length > 0;
+    $('aiEmpty').hidden = has;
+    $('aiNew').hidden = !has;
+    $('aiLog').hidden = !has;
+  }
   function scrollDown(node) { node.scrollIntoView({ block: 'nearest' }); }
 
   function addMessage(kind, who, text) {
@@ -1638,6 +1662,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     var t = $('aiInput');
     t.style.height = 'auto';
     t.style.height = Math.min(140, t.scrollHeight) + 'px';
+    t.style.overflowY = t.scrollHeight > 140 ? 'auto' : 'hidden'; // no scrollbar arrows for short text
   }
 
   function addLog(entry) {
@@ -1761,6 +1786,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   });
 
   refreshUi();
+  showChat();
   $('aiSettings').open = useOwn() && buildChain().length === 0;
   $('tabs').hidden = false;
 })();
