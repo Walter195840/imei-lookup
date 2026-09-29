@@ -148,6 +148,8 @@ td.mono { font-family: Consolas, "Cascadia Mono", monospace; }
   <textarea id="input" spellcheck="false" autocomplete="off" placeholder="e.g. 990008892500567"></textarea>
   <div class="row">
     <button id="btnLookup" class="primary" type="button">Lookup</button>
+    <button id="btnSelection" type="button" title="Fill the box with the cells currently selected in the sheet, then look them up">Use selection</button>
+    <button id="btnClear" type="button">Clear</button>
     <span class="hint">Ctrl+Enter</span>
   </div>
 
@@ -225,6 +227,19 @@ var ImeiLogic = (function () {
     return out;
   }
 
+  // Collapse repeated valid IMEIs (same normalized value) into one entry with a count.
+  // Invalid lines are never merged. Returns [{ norm, count }] in first-seen order.
+  function dedupeNormalized(norms) {
+    var out = [], seen = {};
+    norms.forEach(function (n) {
+      if (n.ok && Object.prototype.hasOwnProperty.call(seen, n.imei)) { seen[n.imei].count++; return; }
+      var entry = { norm: n, count: 1 };
+      if (n.ok) seen[n.imei] = entry;
+      out.push(entry);
+    });
+    return out;
+  }
+
   function normHeader(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase(); }
 
   // Index of the header equal (case-insensitive, trimmed) to name, or -1.
@@ -266,6 +281,7 @@ var ImeiLogic = (function () {
   return {
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
+    dedupeNormalized: dedupeNormalized,
     toTsv: toTsv, toHtmlTable: toHtmlTable, colLetter: colLetter
   };
 })();
@@ -279,6 +295,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
   var L = ImeiLogic;
   var STORE_KEY = 'imeiLookup.settings';
   var CHUNK = 5000;
+  var MAX_SELECTION = 5000; // cells
 
   var state = {
     table: null,        // cached parsed table
@@ -563,13 +580,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     }).catch(function (e) { showError('Could not select the row: ' + (e && e.message ? e.message : e)); });
   }
 
-  function renderCard(norm, matches, table) {
+  function renderCard(norm, matches, table, count) {
     var cls = 'card' + (!norm.ok ? ' bad' : matches.length === 0 ? ' nomatch' : '');
     var card = el('section', cls);
     var head = el('div', 'card-head');
     head.appendChild(el('span', 'imei', norm.ok ? norm.imei : (norm.input || '(empty)')));
     if (norm.ok && matches.length > 1) head.appendChild(el('span', 'count', matches.length + ' matching rows'));
     card.appendChild(head);
+    if (count > 1) card.appendChild(el('div', 'note', 'Entered ' + count + ' times.'));
     norm.notes.forEach(function (n) { card.appendChild(el('div', 'note', n)); });
     norm.warnings.forEach(function (n) { card.appendChild(el('div', 'note warn', n)); });
     if (!norm.ok) { card.appendChild(el('div', 'note err', norm.error)); return card; }
@@ -693,19 +711,57 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     var tableP = needTable ? ensureTable(false) : Promise.resolve(null);
     tableP.then(function (table) {
       if (needTable && !table) { showError('The range table was not found. Choose it in Settings.'); return; }
-      var items = norms.map(function (n) {
-        return { norm: n, matches: n.ok ? L.findMatches(table.rows, n.imei) : [] };
+      var items = L.dedupeNormalized(norms).map(function (d) {
+        return { norm: d.norm, count: d.count, matches: d.norm.ok ? L.findMatches(table.rows, d.norm.imei) : [] };
       });
       var frag = document.createDocumentFragment();
-      items.forEach(function (it) { frag.appendChild(renderCard(it.norm, it.matches, table)); });
+      items.forEach(function (it) { frag.appendChild(renderCard(it.norm, it.matches, table, it.count)); });
       $('results').appendChild(frag);
       if (table) renderSummary(items, table);
     }).catch(showLoadError).then(function () { btn.disabled = false; });
   }
 
+  // Fill the input from the cells selected in the sheet (read only), then look them up.
+  function useSelection() {
+    showError('');
+    var btn = $('btnSelection');
+    btn.disabled = true;
+    Excel.run(function (ctx) {
+      var rng = ctx.workbook.getSelectedRange();
+      rng.load('rowCount,columnCount');
+      return ctx.sync().then(function () {
+        if (rng.rowCount * rng.columnCount > MAX_SELECTION)
+          throw new Error('The selection is too large (over ' + MAX_SELECTION.toLocaleString() + ' cells). Select fewer cells.');
+        rng.load('text');
+        return ctx.sync().then(function () { return rng.text; });
+      });
+    }).then(function (text) {
+      var lines = [];
+      text.forEach(function (row) {
+        row.forEach(function (c) { c = String(c).trim(); if (c) lines.push(c); });
+      });
+      if (!lines.length) { showError('The selected cells are empty.'); return; }
+      $('input').value = lines.join('\n');
+      runLookup();
+    }).catch(function (err) {
+      showError('Could not read the selection: ' + (err && err.message ? err.message : err));
+    }).then(function () { btn.disabled = false; });
+  }
+
+  function clearAll() {
+    showError('');
+    $('input').value = '';
+    $('results').textContent = '';
+    $('summary').textContent = '';
+    $('input').focus();
+  }
+
   // ---------- startup ----------
   function init() {
     $('btnLookup').addEventListener('click', runLookup);
+    $('btnSelection').addEventListener('click', useSelection);
+    $('btnClear').addEventListener('click', clearAll);
+    $('input').focus();
     $('input').addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runLookup(); }
     });

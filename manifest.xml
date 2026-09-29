@@ -12,11 +12,11 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="IMEI Lookup"/>
   <Description DefaultValue="Look up IMEIs in a table of IMEI ranges. Read-only."/>
-  <IconUrl DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/icon-80.png"/>
-  <SupportUrl DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/"/>
+  <IconUrl DefaultValue="https://walter195840.github.io/imei-lookup/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://walter195840.github.io/imei-lookup/icon-80.png"/>
+  <SupportUrl DefaultValue="https://walter195840.github.io/imei-lookup/"/>
   <AppDomains>
-    <AppDomain>https://YOUR-USERNAME.github.io</AppDomain>
+    <AppDomain>https://walter195840.github.io</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -29,10 +29,10 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/taskpane.html"/>
+    <SourceLocation DefaultValue="https://walter195840.github.io/imei-lookup/taskpane.html"/>
   </DefaultSettings>
 
-  <Permissions>ReadWriteDocument</Permissions>
+  <Permissions>ReadDocument</Permissions>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>
@@ -72,12 +72,12 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://walter195840.github.io/imei-lookup/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://walter195840.github.io/imei-lookup/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://walter195840.github.io/imei-lookup/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://YOUR-USERNAME.github.io/imei-lookup/taskpane.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://walter195840.github.io/imei-lookup/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Group.Label" DefaultValue="IMEI Lookup"/>
