@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IMEI Lookup - Help</title>
+<style>
+:root { color-scheme: light dark; --bg:#fff; --text:#1c2521; --muted:#5a6862; --accent:#166e54; --border:#cbd6d1; --surface:#f4f7f5; }
+@media (prefers-color-scheme: dark) { :root { --bg:#171b19; --text:#e8eeeb; --muted:#a3b0aa; --accent:#4cb992; --border:#3a4541; --surface:#202623; } }
+body { background: var(--bg); color: var(--text); font: 16px/1.55 "Segoe UI", -apple-system, Arial, sans-serif; margin: 0; }
+main { max-width: 680px; margin: 0 auto; padding: 32px 20px 64px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 28px 0 6px; color: var(--accent); }
+p, li { margin: 6px 0; }
+.lede { color: var(--muted); margin-top: 0; }
+code { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>IMEI Lookup</h1>
+  <p class="lede">An Excel add-in that looks up IMEIs in a table of IMEI ranges.</p>
+
+  <h2>How to use it</h2>
+  <ol>
+    <li>Open the workbook that has your range table, then click <strong>IMEI Lookup</strong> on the Home tab.</li>
+    <li>The add-in finds the table by its <code>From IMEI</code> and <code>To IMEI</code> headers. If it can't, open the <strong>⋯</strong> menu and choose <strong>Table settings</strong>.</li>
+    <li>Enter one or more IMEIs, one per line, and press <strong>Lookup</strong> or Ctrl+Enter.</li>
+    <li>Use <strong>Go to row</strong> on a result to jump to that row in the sheet.</li>
+  </ol>
+  <p>IMEIs can have 14, 15 or 16 digits. A 14-digit IMEI gets its check digit added, and a 16-digit one (IMEISV) has its last two digits replaced by the check digit.</p>
+
+  <h2>Ask AI (optional)</h2>
+  <p>The <strong>Ask AI</strong> tab lets you ask questions in plain language. The AI never receives your sheet. It asks the add-in to run lookups on your computer, and only those results are sent. The <strong>What was sent to the AI</strong> list under the chat shows exactly what left your computer.</p>
+
+  <h2>Your data</h2>
+  <ul>
+    <li>The add-in only reads your workbook. It never changes cells.</li>
+    <li>Without Ask AI, nothing is sent anywhere.</li>
+    <li>With Ask AI, your questions and the matching rows are sent to an AI provider (Groq, or Google Gemini as a backup) through a server run by whoever set up this add-in for your team. Provider free tiers may use prompts to improve their products.</li>
+    <li>Settings are stored in your browser on this computer.</li>
+  </ul>
+
+  <h2>Getting help</h2>
+  <p>Ask the person who shared this add-in with you.</p>
+</main>
+</body>
+</html>

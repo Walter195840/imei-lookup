@@ -55,8 +55,6 @@ h1 { font-size: 16px; margin: 0; font-weight: 600; }
 button, textarea, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-header.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.top-actions { display: flex; gap: 6px; }
 
 label { display: block; font-weight: 600; margin: 0 0 4px; }
 textarea {
@@ -115,56 +113,68 @@ td.mono { font-family: Consolas, "Cascadia Mono", monospace; }
 .summary h2 { font-size: 14px; margin: 14px 0 0; }
 .table-wrap { overflow-x: auto; }
 
-/* ---- tabs and Ask AI ---- */
+/* ---- app frame: the pane is one full-height column; each tab scrolls by itself ---- */
 [hidden] { display: none !important; }
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-.tabs button { border: 0; border-bottom: 3px solid transparent; background: none; border-radius: 0; padding: 6px 12px; font-weight: 600; color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+html, body { height: 100%; overflow: hidden; }
+body { padding: 0; }
+#app { height: 100%; display: flex; flex-direction: column; padding: 10px 12px 8px; transform-origin: top left; }
+.tab-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+#tabAI { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---- top bar: tabs + one menu ---- */
+.topbar { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-shrink: 0; }
+.tabs { display: flex; flex: 1; gap: 2px; }
+.tabs button { flex: 1; border: 0; border-bottom: 3px solid transparent; background: none; border-radius: 0; padding: 6px 10px; font-weight: 600; color: var(--muted); text-align: center; }
 .tabs button:hover { background: var(--surface); }
 .tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.menu-wrap { position: relative; margin-left: auto; }
+button.icon { padding: 2px 9px; font-size: 18px; line-height: 1; letter-spacing: 1px; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 2px); z-index: 20; min-width: 190px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+}
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 5px; }
+.menu button:hover { background: var(--surface-2); }
+.menu button:disabled { opacity: .45; }
+.menu-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+button.ghost { background: none; border-color: transparent; color: var(--muted); }
+button.ghost:hover { background: var(--surface-2); color: var(--text); }
+
+/* ---- lookup tab ---- */
+.statusbar { margin: 0 0 8px; }
+.statusbar .status { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- inputs and panels ---- */
 input[type=text], input[type=password] {
   width: 100%; padding: 5px 8px; background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: 4px; font: inherit;
 }
 label.check { display: flex; align-items: center; gap: 6px; font-weight: 400; margin-top: 8px; }
-details.panel > summary { cursor: pointer; font-weight: 600; }
-details.panel[open] > summary { margin-bottom: 8px; }
 .panel a { color: var(--accent); }
-.chat { margin: 8px 0; }
-.msg { padding: 6px 8px; border-radius: 6px; margin: 6px 0; overflow-wrap: anywhere; }
-.msg .who { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
-.msg .body { white-space: pre-wrap; }
-.msg.user { background: var(--accent-soft); }
-.msg.ai { background: var(--surface); border: 1px solid var(--border); }
-.msg.err { background: var(--err-bg); color: var(--err-text); }
-.msg.err .who { color: var(--err-text); }
-.msg.sys { color: var(--muted); font-size: 12px; padding: 0 2px; }
-.msg button { margin-top: 6px; }
-details.log { margin: 12px 0; }
-details.log > summary { cursor: pointer; font-weight: 600; }
-.log-entry { margin: 8px 0; font-size: 12px; }
-.log-entry .what { font-weight: 600; overflow-wrap: anywhere; }
-.log pre {
-  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; margin: 4px 0 0;
-  background: var(--surface); border: 1px solid var(--border); padding: 4px 6px; border-radius: 4px;
-  max-height: 200px; overflow: auto; font-family: Consolas, "Cascadia Mono", monospace;
-}
+.panel-title { font-weight: 600; margin-bottom: 8px; }
+.hint.tiny { font-size: 11px; margin-top: 10px; }
 
-/* ---- chat layout ---- */
-.ai-bar { display: flex; align-items: flex-start; gap: 8px; }
-.ai-bar details { flex: 1; min-width: 0; margin: 0; }
-.ai-bar > button { margin-top: 2px; }
-.empty { text-align: center; padding: 18px 4px 8px; }
-.empty-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-.chips { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.chip { text-align: left; padding: 7px 12px; border-radius: 16px; background: var(--surface); }
-.chat { display: flex; flex-direction: column; gap: 12px; margin: 10px 0; }
-.chat .msg { margin: 0; }
+/* ---- Ask AI ---- */
+#aiTop { flex-shrink: 0; max-height: 55%; overflow-y: auto; }
+#aiScroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.empty { margin: auto 0; text-align: center; padding: 12px 2px; }
+.empty-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+.chip { padding: 5px 12px; font-size: 12px; border-radius: 16px; background: var(--surface); }
+.chat { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 8px; }
+.msg { overflow-wrap: anywhere; }
+.msg .who { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+.msg .body { white-space: pre-wrap; }
 .msg.user { align-self: flex-end; max-width: 90%; background: var(--accent-soft); border-radius: 14px 14px 3px 14px; padding: 7px 11px; }
-.msg.ai { background: none; border: 0; padding: 0 2px; }
-.msg.ai .who { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
-.msg.ai button.small { margin-top: 6px; background: none; color: var(--muted); border-color: transparent; padding: 1px 6px; }
-.msg.ai button.small:hover { background: var(--surface-2); color: var(--text); }
-.msg.sys { text-align: center; font-style: italic; }
+.msg.ai { padding: 0 2px; }
+.msg.err { background: var(--err-bg); color: var(--err-text); border-radius: 6px; padding: 6px 8px; }
+.msg.err .who { color: var(--err-text); }
+.msg.sys { text-align: center; font-style: italic; color: var(--muted); font-size: 12px; }
+.msg-actions { display: flex; gap: 2px; margin-top: 4px; }
+.msg-actions button { padding: 1px 6px; font-size: 12px; }
 .md > * { margin: 0 0 8px; }
 .md > *:last-child { margin-bottom: 0; }
 .md ul, .md ol { padding-left: 20px; }
@@ -174,27 +184,29 @@ details.log > summary { cursor: pointer; font-weight: 600; }
 .md pre code { background: none; padding: 0; }
 .md .md-h { font-weight: 600; }
 .md .table-wrap { margin: 0 0 8px; }
-.composer-wrap { position: sticky; bottom: 0; background: var(--bg); padding: 8px 0 2px; margin-top: 8px; border-top: 1px solid var(--border); }
-.composer { display: flex; gap: 6px; align-items: flex-end; }
-.composer textarea { flex: 1; min-width: 0; min-height: 36px; max-height: 140px; resize: none; overflow-y: hidden; }
-.composer-wrap { padding-bottom: 6px; }
+details.log { margin: 4px 0 8px; }
+details.log > summary { cursor: pointer; font-weight: 600; font-size: 12px; color: var(--muted); }
+.log-entry { margin: 8px 0; font-size: 12px; }
+.log-entry .what { font-weight: 600; overflow-wrap: anywhere; }
+.log pre {
+  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; margin: 4px 0 0;
+  background: var(--surface); border: 1px solid var(--border); padding: 4px 6px; border-radius: 4px;
+  max-height: 200px; overflow: auto; font-family: Consolas, "Cascadia Mono", monospace;
+}
 
-/* ---- calmer chrome ---- */
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.statusbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
-.statusbar .status { margin: 3px 0 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.top-actions { display: flex; gap: 2px; flex-shrink: 0; }
-button.ghost { background: none; border-color: transparent; color: var(--muted); }
-button.ghost:hover { background: var(--surface-2); color: var(--text); }
-.push { margin-left: auto; }
-.hint.tiny { font-size: 11px; margin-top: 10px; }
-.tabs button { flex: 1; text-align: center; }
-.empty { padding: 14px 2px 6px; }
-.empty-title { font-size: 15px; margin-bottom: 4px; }
-.chips { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
-.chip { padding: 5px 12px; font-size: 12px; }
-.ai-bar > button { margin-top: 0; }
-.ai-bar details.panel.compact { padding: 6px 10px; }
+/* message box pinned to the bottom of the pane, like a chat app */
+.composer-box {
+  flex-shrink: 0; margin-top: 6px; padding: 8px 10px 6px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px;
+}
+.composer-box:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--accent); }
+.composer-box textarea {
+  display: block; width: 100%; min-height: 24px; max-height: 140px; padding: 2px; resize: none; overflow-y: hidden;
+  background: transparent; border: 0; outline: none; font-family: inherit; font-size: inherit;
+}
+.composer-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.tag { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 16px; line-height: 1; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -204,20 +216,33 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 <div id="app">
   <h1 class="sr-only">IMEI Lookup</h1>
 
-  <!-- Shown by the Ask AI script once it has loaded; Lookup works without it -->
-  <div class="tabs" id="tabs" role="tablist" aria-label="IMEI Lookup sections" hidden>
-    <button type="button" role="tab" id="tabBtnLookup" aria-selected="true" aria-controls="tabLookup">Lookup</button>
-    <button type="button" role="tab" id="tabBtnAI" aria-selected="false" aria-controls="tabAI" tabindex="-1">Ask AI</button>
-  </div>
-
-<div id="tabLookup" role="tabpanel" aria-labelledby="tabBtnLookup">
-  <div class="statusbar">
-    <div id="tableStatus" class="status" aria-live="polite"></div>
-    <div class="top-actions" id="lookupActions">
-      <button id="btnRefresh" class="small ghost" type="button" title="Re-read the table from the workbook">Refresh</button>
-      <button id="btnSettings" class="small ghost" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+  <div class="topbar">
+    <!-- Tabs are shown by the Ask AI script once it has loaded; Lookup works without it -->
+    <div class="tabs" id="tabs" role="tablist" aria-label="IMEI Lookup sections" hidden>
+      <button type="button" role="tab" id="tabBtnLookup" aria-selected="true" aria-controls="tabLookup">Lookup</button>
+      <button type="button" role="tab" id="tabBtnAI" aria-selected="false" aria-controls="tabAI" tabindex="-1">Ask AI</button>
+    </div>
+    <div class="menu-wrap">
+      <button id="menuBtn" class="ghost icon" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" aria-label="More options" title="More options">⋯</button>
+      <div id="menu" class="menu" role="menu" hidden>
+        <div id="menuLookup">
+          <button id="btnRefresh" role="menuitem" type="button" title="Re-read the table from the workbook">Refresh table</button>
+          <button id="btnSettings" role="menuitem" type="button" aria-expanded="false" aria-controls="settings">Table settings…</button>
+          <button id="btnSelection" role="menuitem" type="button" title="Fill the box with the cells currently selected in the sheet, then look them up">Use selection</button>
+        </div>
+        <div id="menuAI" hidden>
+          <button id="aiMenuSettings" role="menuitem" type="button" aria-controls="aiSettings">AI settings…</button>
+          <button id="aiCopyChat" role="menuitem" type="button">Copy conversation</button>
+          <button id="aiNew" role="menuitem" type="button">New chat</button>
+        </div>
+        <div class="menu-sep"></div>
+        <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
+      </div>
     </div>
   </div>
+
+<div id="tabLookup" class="tab-scroll" role="tabpanel" aria-labelledby="tabBtnLookup">
+  <div class="statusbar"><div id="tableStatus" class="status" aria-live="polite"></div></div>
   <div id="staleBanner" class="banner warn" hidden>The sheet changed since it was read. It will reload on the next lookup; row numbers in the results below may be out of date.</div>
 
   <section id="settings" class="panel" hidden>
@@ -233,12 +258,10 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   <div id="errorBox" class="banner err" role="alert" hidden></div>
 
   <label for="input">Enter one or more IMEIs (one per line)</label>
-  <textarea id="input" spellcheck="false" autocomplete="off" placeholder="e.g. 990008892500567"></textarea>
+  <textarea id="input" spellcheck="false" autocomplete="off" placeholder="e.g. 990008892500567&#10;Ctrl+Enter to look up"></textarea>
   <div class="row">
     <button id="btnLookup" class="primary" type="button" title="Ctrl+Enter">Lookup</button>
-    <button id="btnSelection" type="button" class="ghost" title="Fill the box with the cells currently selected in the sheet, then look them up">Use selection</button>
     <button id="btnClear" type="button" class="ghost">Clear</button>
-    <span class="hint push">Ctrl+Enter</span>
   </div>
 
   <div id="results" aria-live="polite"></div>
@@ -246,12 +269,37 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 </div>
 
 <div id="tabAI" role="tabpanel" aria-labelledby="tabBtnAI" hidden>
-  <div class="ai-bar">
-    <details id="aiSettings" class="panel compact">
-      <summary>Connection</summary>
+  <div id="aiTop">
+    <section id="aiSettings" class="panel" hidden aria-label="AI settings">
+      <div class="panel-title">AI settings</div>
+
+      <div class="field">
+        <label for="aiDetail">Answer length</label>
+        <select id="aiDetail">
+          <option value="short">Short</option>
+          <option value="normal">Normal</option>
+          <option value="detailed">Detailed</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="aiRows">Rows per lookup</label>
+        <select id="aiRows">
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+        </select>
+        <div class="hint" style="margin-top:4px">Fewer rows use less of the free per-minute limit and send less data.</div>
+      </div>
 
       <div id="aiProxyBox">
-        <div class="hint">Ask AI runs through your team's shared connection: Groq first, with Gemini as a backup when Groq's free limit is reached. You don't need an API key.</div>
+        <div class="field">
+          <label for="aiPreferred">Try first</label>
+          <select id="aiPreferred">
+            <option value="groq">Groq (Gemini as backup)</option>
+            <option value="gemini">Gemini (Groq as backup)</option>
+          </select>
+        </div>
+        <div class="hint">Ask AI runs through your team's shared connection. You don't need an API key. If the first provider's free limit is reached, the other one answers.</div>
         <div id="aiProxyNote" class="hint" style="margin-top:6px"></div>
         <div class="field" style="margin-top:8px">
           <label for="aiTeamCode">Team access code</label>
@@ -281,36 +329,39 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
         </div>
         <button id="aiClearKeys" class="small" type="button">Clear saved keys</button>
       </div>
-    </details>
-    <button id="aiNew" class="small ghost" type="button" hidden>New chat</button>
+
+      <div class="row"><button id="aiSettingsDone" class="primary small" type="button">Done</button></div>
+    </section>
+    <div id="aiOff" class="banner info">Ask AI is off until you paste an API key in AI settings (⋯ menu).</div>
   </div>
 
-  <div id="aiOff" class="banner info">Ask AI is off until you paste an API key above.</div>
-
-  <div id="aiEmpty" class="empty">
-    <div class="empty-title">Ask about your IMEI table</div>
-    <div class="hint">Your sheet never leaves Excel. Only lookup results are sent to the AI.</div>
-    <div class="chips">
-      <button type="button" class="chip" data-fill="What device is ">Look up an IMEI</button>
-      <button type="button" class="chip" data-send="List the columns in the table.">List the columns</button>
-      <button type="button" class="chip" data-fill="Find rows where Manufacturer contains ">Find by manufacturer</button>
+  <div id="aiScroll">
+    <div id="aiEmpty" class="empty">
+      <div class="empty-title">Ask about your IMEI table</div>
+      <div class="hint">Your sheet never leaves Excel. Only lookup results are sent to the AI.</div>
+      <div class="chips">
+        <button type="button" class="chip" data-fill="What device is ">Look up an IMEI</button>
+        <button type="button" class="chip" data-send="List the columns in the table.">List the columns</button>
+        <button type="button" class="chip" data-fill="Find rows where Manufacturer contains ">Find by manufacturer</button>
+      </div>
+      <div class="hint tiny">Enter sends. Shift+Enter adds a line.</div>
     </div>
-    <div class="hint tiny">Enter sends. Shift+Enter adds a line.</div>
+
+    <div id="aiChat" class="chat" aria-live="polite"></div>
+    <div id="aiStatus" class="status" aria-live="polite"></div>
+
+    <details id="aiLog" class="log" hidden>
+      <summary>What was sent to the AI</summary>
+      <div class="hint" style="margin-top:6px">Every question and tool result sent to the provider is listed here. Earlier messages in the chat are sent again with each question, along with the instructions and tool definitions (no sheet data).</div>
+      <div id="aiLogBody"></div>
+    </details>
   </div>
 
-  <div id="aiChat" class="chat" aria-live="polite"></div>
-  <div id="aiStatus" class="status" aria-live="polite"></div>
-
-  <details id="aiLog" class="log" hidden>
-    <summary>What was sent to the AI</summary>
-    <div class="hint" style="margin-top:6px">Every question and tool result sent to the provider is listed here. Earlier messages in the chat are sent again with each question, along with the instructions and tool definitions (no sheet data).</div>
-    <div id="aiLogBody"></div>
-  </details>
-
-  <div class="composer-wrap">
-    <div class="composer">
-      <textarea id="aiInput" rows="1" aria-label="Ask about your IMEI table" title="Enter to send, Shift+Enter for a new line" placeholder="Ask a question…"></textarea>
-      <button id="aiSend" class="primary" type="button">Send</button>
+  <div class="composer-box">
+    <textarea id="aiInput" rows="1" aria-label="Ask about your IMEI table" title="Enter to send, Shift+Enter for a new line" placeholder="Ask a question…"></textarea>
+    <div class="composer-foot">
+      <span id="aiTag" class="tag"></span>
+      <button id="aiSend" class="primary round" type="button" aria-label="Send">↑</button>
     </div>
   </div>
 </div>
@@ -483,7 +534,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
 
   // ---------- messages ----------
   function showError(msg) { var b = $('errorBox'); b.textContent = msg; b.hidden = !msg; }
-  function setStatus(msg) { $('tableStatus').textContent = msg; }
+  function setStatus(msg) { $('tableStatus').textContent = msg; $('tableStatus').title = msg; }
 
   // ---------- reading the workbook ----------
   function usedInfo(ctx, sheet) {
@@ -632,7 +683,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       var msg = table.rows.length.toLocaleString() + ' ranges from "' + table.sheet + '"';
       if (table.skipped) msg += '. ' + table.skipped.toLocaleString() + ' rows skipped: From/To not a plain number.';
       setStatus(msg);
-      $('tableStatus').title = 'Header row ' + (table.headerRow + 1) + ' on sheet "' + table.sheet + '"';
+      $('tableStatus').title = msg + ' (header row ' + (table.headerRow + 1) + ')';
       registerChangeHandler(table.sheet);
       return table;
     }, function (err) {
@@ -773,6 +824,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       m.appendChild(btn);
       card.appendChild(m);
     });
+    if (window.ImeiAi) {
+      var ask = el('button', 'small ghost', 'Ask AI about this');
+      ask.type = 'button';
+      ask.addEventListener('click', function () { window.ImeiAi.ask('What device is ' + norm.imei + '?'); });
+      card.appendChild(ask);
+    }
     return card;
   }
 
@@ -917,8 +974,51 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     $('input').focus();
   }
 
+  // ---------- menu (top right) and text size ----------
+  var SIZES = [{ name: 'Small', zoom: 0.92 }, { name: 'Normal', zoom: 1 }, { name: 'Large', zoom: 1.12 }];
+  var sizeIdx = 1;
+  function applySize() {
+    var z = SIZES[sizeIdx].zoom, app = $('app');
+    app.style.zoom = z;
+    app.style.width = (100 / z) + '%';   // keep the zoomed page exactly the size of the pane
+    app.style.height = (100 / z) + '%';
+    $('menuTextSize').textContent = 'Text size: ' + SIZES[sizeIdx].name;
+  }
+  function closeMenu(returnFocus) {
+    $('menu').hidden = true;
+    $('menuBtn').setAttribute('aria-expanded', 'false');
+    if (returnFocus) $('menuBtn').focus();
+  }
+  function initMenu() {
+    try {
+      var saved = parseInt(window.localStorage.getItem('imeiLookup.textSize'), 10);
+      if (saved >= 0 && saved < SIZES.length) sizeIdx = saved;
+    } catch (e) { /* ignore */ }
+    applySize();
+    $('menuBtn').addEventListener('click', function () {
+      var open = $('menu').hidden;
+      $('menu').hidden = !open;
+      $('menuBtn').setAttribute('aria-expanded', String(open));
+    });
+    $('menu').addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('[role=menuitem]')) closeMenu(false);
+    });
+    document.addEventListener('click', function (e) {
+      if (!$('menu').hidden && !$('menu').contains(e.target) && !$('menuBtn').contains(e.target)) closeMenu(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('menu').hidden) closeMenu(true);
+    });
+    $('menuTextSize').addEventListener('click', function () {
+      sizeIdx = (sizeIdx + 1) % SIZES.length;
+      applySize();
+      try { window.localStorage.setItem('imeiLookup.textSize', String(sizeIdx)); } catch (e) { /* ignore */ }
+    });
+  }
+
   // ---------- startup ----------
   function init() {
+    initMenu();
     $('btnLookup').addEventListener('click', runLookup);
     $('btnSelection').addEventListener('click', useSelection);
     $('btnClear').addEventListener('click', clearAll);
@@ -978,6 +1078,16 @@ var AiLogic = (function (L) {
     'Be concise. Reply in simple Markdown: **bold** for key values, a bullet list for a few items, ' +
     'and a table only when listing several rows.';
 
+  var DETAIL_HINTS = {
+    short: 'Keep answers to one or two short sentences and give only what was asked.',
+    normal: '',
+    detailed: 'Give a fuller answer: include manufacturer, model, sheet row and other relevant fields for each result.'
+  };
+  function systemPromptFor(detail) {
+    var extra = DETAIL_HINTS[detail] || '';
+    return extra ? SYSTEM_PROMPT + ' ' + extra : SYSTEM_PROMPT;
+  }
+
   var PROVIDERS = {
     gemini: {
       label: 'Google Gemini', defaultModel: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey',
@@ -1025,8 +1135,15 @@ var AiLogic = (function (L) {
     return out;
   }
 
-  function runTool(name, args, table) {
+  function maxRowsOf(opts) {
+    var n = parseInt(opts && opts.maxRows, 10);
+    return n >= 1 ? Math.min(n, MAX_ROWS) : MAX_ROWS;
+  }
+
+  // opts.maxRows (1-20) limits how many rows a single tool result may carry.
+  function runTool(name, args, table, opts) {
     args = (args && typeof args === 'object') ? args : {};
+    var cap = maxRowsOf(opts);
     if (name === 'list_columns') return { columns: table.headers.slice() };
 
     if (name === 'lookup_imei') {
@@ -1035,7 +1152,8 @@ var AiLogic = (function (L) {
       var m = L.findMatches(table.rows, n.imei);
       var res = { imei: n.imei, notes: n.notes.concat(n.warnings), match_count: m.length };
       if (m.length === 0) res.result = 'No matching range.';
-      res.matches = m.map(function (r) { return rowObject(table, r); });
+      res.matches = m.slice(0, cap).map(function (r) { return rowObject(table, r); });
+      if (m.length > cap) { res.truncated = true; res.note = 'Showing ' + cap + ' of ' + m.length + ' matching rows.'; }
       return res;
     }
 
@@ -1060,7 +1178,7 @@ var AiLogic = (function (L) {
       if (idx < 0) return { error: 'Unknown column "' + String(args.column) + '".', columns: table.headers.slice() };
       var needle = String(args.contains == null ? '' : args.contains).toLowerCase();
       if (!needle) return { error: 'contains must not be empty.' };
-      var limit = Math.max(1, Math.min(MAX_ROWS, parseInt(args.limit, 10) || MAX_ROWS));
+      var limit = Math.max(1, Math.min(cap, parseInt(args.limit, 10) || cap));
       var total = 0, rows = [];
       for (var i = 0; i < table.rows.length; i++) {
         var cell = String(table.rows[i].cells[idx] == null ? '' : table.rows[i].cells[idx]).toLowerCase();
@@ -1098,9 +1216,9 @@ var AiLogic = (function (L) {
     return { value: cut, text: cut, truncated: true };
   }
 
-  function executeTool(name, args, table) {
+  function executeTool(name, args, table, opts) {
     var r;
-    try { r = runTool(name, args, table); } catch (e) { r = { error: String(e && e.message ? e.message : e) }; }
+    try { r = runTool(name, args, table, opts); } catch (e) { r = { error: String(e && e.message ? e.message : e) }; }
     return capResult(r);
   }
 
@@ -1117,6 +1235,11 @@ var AiLogic = (function (L) {
     else msg = 'The request failed (' + status + ').';
     detail = detail ? String(detail).trim().slice(0, 500) : '';
     return detail ? msg + '\n\nDetails: ' + detail : msg;
+  }
+  function cancelledError() {
+    var e = new Error('Stopped.');
+    e.cancelled = true;
+    return e;
   }
   function apiError(status, detail) {
     var e = new Error(friendlyError(status, detail));
@@ -1145,7 +1268,7 @@ var AiLogic = (function (L) {
   function asTarget(t) { return typeof t === 'string' ? { key: t } : (t || {}); }
   function proxyBase(t) { return String(t.proxy).replace(/\/+$/, ''); }
 
-  function buildGeminiRequest(model, target, contents) {
+  function buildGeminiRequest(model, target, contents, detail) {
     var t = asTarget(target);
     var m = String(model).trim().replace(/^models\//, '');
     var headers = { 'Content-Type': 'application/json' };
@@ -1163,14 +1286,14 @@ var AiLogic = (function (L) {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          systemInstruction: { parts: [{ text: systemPromptFor(detail) }] },
           contents: contents,
           tools: [{ functionDeclarations: geminiDeclarations() }]
         })
       }
     };
   }
-  function buildGroqRequest(model, target, messages) {
+  function buildGroqRequest(model, target, messages, detail) {
     var t = asTarget(target);
     var headers = { 'Content-Type': 'application/json' };
     var url;
@@ -1188,7 +1311,7 @@ var AiLogic = (function (L) {
         headers: headers,
         body: JSON.stringify({
           model: String(model).trim(),
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }].concat(messages),
+          messages: [{ role: 'system', content: systemPromptFor(detail) }].concat(messages),
           tools: groqTools(),
           tool_choice: 'auto'
         })
@@ -1228,7 +1351,10 @@ var AiLogic = (function (L) {
   async function post(fetchFn, req) {
     var res;
     try { res = await fetchFn(req.url, req.init); }
-    catch (e) { throw apiError(0, e && e.message); }
+    catch (e) {
+      if (e && (e.name === 'AbortError' || e.cancelled)) throw cancelledError();
+      throw apiError(0, e && e.message);
+    }
     var body = await res.text();
     var data = null;
     try { data = JSON.parse(body); } catch (e) { data = null; }
@@ -1252,8 +1378,9 @@ var AiLogic = (function (L) {
       hist.push(gem ? { role: 'user', parts: [{ text: o.question }] } : { role: 'user', content: o.question });
       log({ kind: 'question', provider: o.provider, text: o.question });
       for (var round = 0; ; round++) {
+        if (o.shouldStop && o.shouldStop()) throw cancelledError();
         status('Thinking…');
-        var req = gem ? buildGeminiRequest(o.model, o.key, hist) : buildGroqRequest(o.model, o.key, hist);
+        var req = gem ? buildGeminiRequest(o.model, o.key, hist, o.detail) : buildGroqRequest(o.model, o.key, hist, o.detail);
         var turn = (gem ? readGemini : readGroq)(await post(o.fetchFn, req));
         if (turn.calls.length === 0) {
           hist.push(turn.append);
@@ -1269,6 +1396,7 @@ var AiLogic = (function (L) {
           var call = turn.calls[i];
           status('Running ' + call.name + '…');
           var r = await o.executeTool(call.name, call.args);
+          if (o.shouldStop && o.shouldStop()) throw cancelledError();
           log({ kind: 'tool', provider: o.provider, name: call.name, args: call.args, text: r.text, truncated: r.truncated });
           outs.push({ call: call, r: r });
         }
@@ -1425,6 +1553,11 @@ var AiLogic = (function (L) {
     };
   }
 
+  // Forget the most recent question and answer (used by Regenerate).
+  function undoLast(store) {
+    store.transcript.pop();
+  }
+
   // Ask one question, trying o.chain in order: [{ provider, label, model, target }].
   // A provider that just hit a rate limit (429) is skipped for a minute.
   // Resolves { text, provider, switched:[{ from, status }], stopped? } or throws.
@@ -1442,13 +1575,15 @@ var AiLogic = (function (L) {
       try {
         var res = await runChat({
           provider: c.provider, model: c.model, key: c.target, history: h.msgs, question: o.question,
-          executeTool: o.executeTool, fetchFn: o.fetchFn, onLog: o.onLog, onStatus: o.onStatus
+          executeTool: o.executeTool, fetchFn: o.fetchFn, onLog: o.onLog, onStatus: o.onStatus,
+          detail: o.detail, shouldStop: o.shouldStop
         });
         if (res.stopped) return { text: res.text, stopped: true, provider: c.provider, switched: switched };
         store.transcript.push({ q: o.question, a: res.text });
         h.upTo = store.transcript.length;
         return { text: res.text, provider: c.provider, switched: switched };
       } catch (e) {
+        if (e && e.cancelled) throw e; // Stop is never a reason to try another provider
         errors.push({ label: c.label || c.provider, message: e && e.message ? e.message : String(e) });
         if (!isFallbackStatus(e && e.status)) break;
         if (e.status === 429) store.cooldown[c.provider] = now + COOLDOWN_MS;
@@ -1466,7 +1601,8 @@ var AiLogic = (function (L) {
     runTool: runTool, capResult: capResult, executeTool: executeTool, friendlyError: friendlyError,
     buildGeminiRequest: buildGeminiRequest, buildGroqRequest: buildGroqRequest, runChat: runChat,
     isFallbackStatus: isFallbackStatus, seedHistory: seedHistory, newStore: newStore, runWithFallback: runWithFallback,
-    parseMarkdown: parseMarkdown, toPlainText: toPlainText
+    parseMarkdown: parseMarkdown, toPlainText: toPlainText,
+    systemPromptFor: systemPromptFor, undoLast: undoLast
   };
 })(ImeiLogic);
 if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
@@ -1477,7 +1613,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
 (function () {
   'use strict';
   if (typeof AiLogic === 'undefined') return;
-  var A = AiLogic, KEY = 'imeiLookup.ai';
+  var A = AiLogic, KEY = 'imeiLookup.ai', CHAT_KEY = 'imeiLookup.chat';
 
   // Address of the team proxy (see worker/README.md). While it still contains "YOUR-",
   // the shared connection is off and people use their own API keys.
@@ -1486,12 +1622,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
 
   var state = {
     provider: 'groq',            // primary provider when people use their own keys
+    preferred: 'groq',           // which provider the team connection tries first
+    detail: 'normal',            // answer length: short | normal | detailed
+    maxRows: 20,                 // rows per lookup: 5 | 10 | 20
     gemini: { key: '', model: A.PROVIDERS.gemini.defaultModel },
     groq: { key: '', model: A.PROVIDERS.groq.defaultModel },
     teamCode: '',
     own: false,                  // "use my own keys" (always true when there is no proxy)
     store: A.newStore(),         // per-provider histories, transcript, rate-limit cooldowns
-    busy: false
+    shown: [],                   // answered questions: { q, a, p } (for Copy conversation and restore)
+    busy: false,
+    stopFlag: false,
+    abort: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -1502,14 +1644,19 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return e;
   }
   function label(p) { return A.PROVIDERS[p].label; }
+  function short(p) { return p === 'groq' ? 'Groq' : 'Gemini'; }
   function useOwn() { return !proxyOn || state.own; }
+  function drop(node) { if (node && node.parentNode) node.parentNode.removeChild(node); }
 
-  // ---------- saved settings (localStorage, never throws) ----------
+  // ---------- saved settings (browser storage, never throws) ----------
   function load() {
     try {
       var s = JSON.parse(window.localStorage.getItem(KEY) || 'null');
       if (!s) return;
       if (s.provider === 'gemini' || s.provider === 'groq') state.provider = s.provider;
+      if (s.preferred === 'gemini' || s.preferred === 'groq') state.preferred = s.preferred;
+      if (s.detail === 'short' || s.detail === 'normal' || s.detail === 'detailed') state.detail = s.detail;
+      if (s.maxRows === 5 || s.maxRows === 10 || s.maxRows === 20) state.maxRows = s.maxRows;
       if (typeof s.teamCode === 'string') state.teamCode = s.teamCode;
       if (s.own === true) state.own = true;
       ['gemini', 'groq'].forEach(function (p) {
@@ -1521,9 +1668,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   function save() {
     try {
       window.localStorage.setItem(KEY, JSON.stringify({
-        provider: state.provider, teamCode: state.teamCode, own: state.own, gemini: state.gemini, groq: state.groq
+        provider: state.provider, preferred: state.preferred, detail: state.detail, maxRows: state.maxRows,
+        teamCode: state.teamCode, own: state.own, gemini: state.gemini, groq: state.groq
       }));
     } catch (e) { /* ignore */ }
+  }
+  // The conversation is kept for this browser session only, so it survives closing and reopening the pane.
+  function saveChat() {
+    try { window.sessionStorage.setItem(CHAT_KEY, JSON.stringify(state.shown)); } catch (e) { /* ignore */ }
+  }
+  function loadChat() {
+    try {
+      var s = JSON.parse(window.sessionStorage.getItem(CHAT_KEY) || 'null');
+      if (!Array.isArray(s)) return [];
+      return s.filter(function (x) {
+        return x && typeof x.q === 'string' && typeof x.a === 'string' && (x.p === 'groq' || x.p === 'gemini');
+      });
+    } catch (e) { return []; }
   }
 
   // ---------- which providers to try, in order ----------
@@ -1531,34 +1692,46 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return useOwn() ? (state[p].model.trim() || A.PROVIDERS[p].defaultModel) : A.PROVIDERS[p].defaultModel;
   }
   function buildChain() {
-    var order, target;
+    var order;
     if (useOwn()) {
       var first = state.provider, second = first === 'groq' ? 'gemini' : 'groq';
       order = [first, second].filter(function (p) { return state[p].key; });
     } else {
-      order = ['groq', 'gemini']; // Groq first, Gemini as the backup
+      order = state.preferred === 'gemini' ? ['gemini', 'groq'] : ['groq', 'gemini'];
     }
     return order.map(function (p) {
-      target = useOwn() ? state[p].key : { proxy: PROXY_URL, code: state.teamCode };
-      return { provider: p, label: label(p), model: modelOf(p), target: target };
+      return {
+        provider: p, label: label(p), model: modelOf(p),
+        target: useOwn() ? state[p].key : { proxy: PROXY_URL, code: state.teamCode }
+      };
     });
   }
 
-  // ---------- tabs ----------
+  // ---------- tabs and menu groups ----------
   function setTab(name) {
     var ai = name === 'ai';
     $('tabLookup').hidden = ai;
     $('tabAI').hidden = !ai;
-    $('lookupActions').hidden = ai;
+    $('menuLookup').hidden = ai;
+    $('menuAI').hidden = !ai;
     $('tabBtnLookup').setAttribute('aria-selected', String(!ai));
     $('tabBtnAI').setAttribute('aria-selected', String(ai));
     $('tabBtnLookup').tabIndex = ai ? -1 : 0;
     $('tabBtnAI').tabIndex = ai ? 0 : -1;
+    if (ai) { scrollDown(); $('aiInput').focus(); }
   }
 
-  // ---------- connection panel ----------
+  // ---------- settings panel ----------
+  function showAiSettings(show) {
+    $('aiSettings').hidden = !show;
+    $('aiMenuSettings').setAttribute('aria-expanded', String(show));
+    if (show) $('aiSettings').scrollIntoView({ block: 'nearest' });
+  }
   function refreshUi() {
     var p = state.provider, cfg = state[p], meta = A.PROVIDERS[p];
+    $('aiDetail').value = state.detail;
+    $('aiRows').value = String(state.maxRows);
+    $('aiPreferred').value = state.preferred;
     $('aiProxyBox').hidden = !proxyOn;
     $('aiOwnBox').hidden = !useOwn();
     $('aiOwn').checked = state.own;
@@ -1575,12 +1748,21 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     updateOff();
   }
   function updateOff() {
-    var has = buildChain().length > 0;
+    var chain = buildChain(), has = chain.length > 0;
     $('aiOff').hidden = has;
-    $('aiSend').disabled = !has || state.busy;
+    $('aiSend').disabled = !has && !state.busy;
+    $('aiTag').textContent = !has ? 'Off'
+      : chain.length > 1 ? short(chain[0].provider) + ' · ' + short(chain[1].provider) + ' as backup'
+      : short(chain[0].provider);
+  }
+  function setBusyUi(b) {
+    var btn = $('aiSend');
+    btn.textContent = b ? '■' : '↑';
+    btn.setAttribute('aria-label', b ? 'Stop' : 'Send');
+    btn.title = b ? 'Stop' : 'Send';
   }
 
-  // ---------- chat ----------
+  // ---------- rendering ----------
   // Markdown from the model is turned into DOM nodes with createElement/textContent only.
   function renderInline(tokens, parent) {
     tokens.forEach(function (t) {
@@ -1625,14 +1807,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return root;
   }
 
-  // The empty-state help shows only before the first message; New chat and the sent-data log only after.
+  function scrollDown() { var s = $('aiScroll'); s.scrollTop = s.scrollHeight; }
+
+  // Empty-state help shows only before the first message; chat-only controls show after.
   function showChat() {
     var has = $('aiChat').children.length > 0;
     $('aiEmpty').hidden = has;
-    $('aiNew').hidden = !has;
     $('aiLog').hidden = !has;
+    $('aiNew').disabled = !has;
+    $('aiCopyChat').disabled = state.shown.length === 0;
   }
-  function scrollDown(node) { node.scrollIntoView({ block: 'nearest' }); }
 
   function addMessage(kind, who, text) {
     var m = el('div', 'msg ' + kind);
@@ -1640,40 +1824,49 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     m.appendChild(el('div', 'body', text));
     $('aiChat').appendChild(m);
     showChat();
-    scrollDown(m);
+    scrollDown();
     return m;
   }
-  function addAnswer(text, provider) {
+
+  function addAnswer(text, provider, q) {
+    // only the latest answer offers Regenerate
+    Array.prototype.slice.call($('aiChat').querySelectorAll('.regen')).forEach(drop);
     var m = el('div', 'msg ai');
-    m.appendChild(el('span', 'who', label(provider)));
+    m.appendChild(el('span', 'who', short(provider)));
     m.appendChild(renderMarkdown(text));
-    var btn = el('button', 'small', 'Copy answer');
-    btn.type = 'button';
-    btn.addEventListener('click', function () {
-      if (window.ImeiApp) window.ImeiApp.copyText(A.toPlainText(A.parseMarkdown(text)), btn);
+    var actions = el('div', 'msg-actions');
+    var copy = el('button', 'small ghost', 'Copy answer');
+    copy.type = 'button';
+    copy.addEventListener('click', function () {
+      if (window.ImeiApp) window.ImeiApp.copyText(A.toPlainText(A.parseMarkdown(text)), copy);
     });
-    m.appendChild(btn);
+    var regen = el('button', 'small ghost regen', 'Regenerate');
+    regen.type = 'button';
+    regen.addEventListener('click', function () { regenerate(q, m); });
+    actions.appendChild(copy);
+    actions.appendChild(regen);
+    m.appendChild(actions);
     $('aiChat').appendChild(m);
     showChat();
-    scrollDown(m);
+    scrollDown();
   }
 
   function autosize() {
     var t = $('aiInput');
     t.style.height = 'auto';
     t.style.height = Math.min(140, t.scrollHeight) + 'px';
-    t.style.overflowY = t.scrollHeight > 140 ? 'auto' : 'hidden'; // no scrollbar arrows for short text
+    t.style.overflowY = t.scrollHeight > 140 ? 'auto' : 'hidden';
   }
 
   function addLog(entry) {
     var box = el('div', 'log-entry');
-    var to = label(entry.provider) + (useOwn() ? '' : ' (via team server)');
+    var to = short(entry.provider) + (useOwn() ? '' : ' (via team server)');
     if (entry.kind === 'question') {
       box.appendChild(el('div', 'what', 'Question sent to ' + to));
       box.appendChild(el('pre', null, entry.text));
     } else {
       var what = 'Tool result sent to ' + to + ': ' + entry.name + '(' + JSON.stringify(entry.args) + ')';
-      if (entry.truncated) what += ' [cut off at ' + A.MAX_RESULT_CHARS + ' characters]';
+      if (entry.truncated) what += ' [cut off]';
       box.appendChild(el('div', 'what', what));
       box.appendChild(el('pre', null, entry.text));
     }
@@ -1684,48 +1877,88 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     if (!window.ImeiApp) return Promise.resolve(A.capResult({ error: 'The lookup tab did not load.' }));
     return window.ImeiApp.ensureTable(false).then(function (table) {
       if (!table) return A.capResult({ error: 'The range table was not found in the workbook.' });
-      return A.executeTool(name, args, table);
+      return A.executeTool(name, args, table, { maxRows: state.maxRows });
     }).catch(function (e) {
       return A.capResult({ error: 'Could not read the workbook: ' + (e && e.message ? e.message : e) });
     });
   }
 
-  async function send(text) {
+  // ---------- asking, stopping, regenerating ----------
+  async function send(text, opts) {
+    opts = opts || {};
     if (state.busy) return;
     var q = (typeof text === 'string' ? text : $('aiInput').value).trim();
     if (!q) return;
     var chain = buildChain();
-    if (!chain.length) { updateOff(); return; }
+    if (!chain.length) { showAiSettings(true); return; }
     state.busy = true;
+    state.stopFlag = false;
+    state.abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    setBusyUi(true);
     updateOff();
-    $('aiInput').value = '';
-    autosize();
-    addMessage('user', null, q);
+    if (!opts.regen) {
+      $('aiInput').value = '';
+      autosize();
+      addMessage('user', null, q);
+    }
     try {
       var res = await A.runWithFallback({
         chain: chain,
         store: state.store,
         question: q,
+        detail: state.detail,
         executeTool: execTool,
-        fetchFn: function (url, init) { return window.fetch(url, init); },
+        shouldStop: function () { return state.stopFlag; },
+        fetchFn: function (url, init) {
+          var o = state.abort ? Object.assign({}, init, { signal: state.abort.signal }) : init;
+          return window.fetch(url, o);
+        },
         onLog: addLog,
         onStatus: function (t) { $('aiStatus').textContent = t; }
       });
-      if (res.provider !== chain[0].provider) {
-        addMessage('sys', null, 'Answered by ' + label(res.provider) + ' because ' + chain[0].label + ' is unavailable right now.');
+      if (res.stopped) {
+        addMessage('sys', null, res.text);
+      } else {
+        if (res.provider !== chain[0].provider) {
+          addMessage('sys', null, 'Answered by ' + short(res.provider) + ' because ' + short(chain[0].provider) + ' is unavailable right now.');
+        }
+        state.shown.push({ q: q, a: res.text, p: res.provider });
+        saveChat();
+        addAnswer(res.text, res.provider, q);
       }
-      addAnswer(res.text, res.provider);
     } catch (e) {
-      addMessage('err', 'Error', e && e.message ? e.message : String(e));
+      if (e && e.cancelled) addMessage('sys', null, 'Stopped.');
+      else addMessage('err', 'Error', e && e.message ? e.message : String(e));
     } finally {
       state.busy = false;
+      state.abort = null;
       $('aiStatus').textContent = '';
+      setBusyUi(false);
       updateOff();
+      showChat();
     }
   }
 
+  function stop() {
+    state.stopFlag = true;
+    if (state.abort) { try { state.abort.abort(); } catch (e) { /* ignore */ } }
+  }
+
+  function regenerate(q, node) {
+    if (state.busy) return;
+    drop(node);
+    A.undoLast(state.store);
+    state.shown.pop();
+    saveChat();
+    showChat();
+    send(q, { regen: true });
+  }
+
   function newChat() {
+    if (state.busy) stop();
     state.store = A.newStore();
+    state.shown = [];
+    saveChat();
     $('aiChat').textContent = '';
     $('aiLogBody').textContent = '';
     $('aiStatus').textContent = '';
@@ -1733,12 +1966,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     $('aiInput').focus();
   }
 
+  function copyChat() {
+    if (!state.shown.length || !window.ImeiApp) return;
+    var text = state.shown.map(function (e) {
+      return 'You: ' + e.q + '\n\nAI (' + short(e.p) + '): ' + A.toPlainText(A.parseMarkdown(e.a));
+    }).join('\n\n---\n\n');
+    window.ImeiApp.copyText(text, $('aiCopyChat'));
+  }
+
   function clearKeys() {
     state.gemini.key = '';
     state.groq.key = '';
     save();
     refreshUi();
-    $('aiSettings').open = true;
+    showAiSettings(true);
     addMessage('sys', null, 'Saved keys cleared.');
   }
 
@@ -1752,26 +1993,24 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     setTab(toAi ? 'ai' : 'lookup');
     $(toAi ? 'tabBtnAI' : 'tabBtnLookup').focus();
   });
-  $('aiOwn').addEventListener('change', function () {
-    state.own = $('aiOwn').checked;
-    save();
-    refreshUi();
-  });
+  $('aiMenuSettings').addEventListener('click', function () { showAiSettings($('aiSettings').hidden); });
+  $('aiSettingsDone').addEventListener('click', function () { showAiSettings(false); $('aiInput').focus(); });
+  $('aiCopyChat').addEventListener('click', copyChat);
+  $('aiNew').addEventListener('click', newChat);
+  $('aiDetail').addEventListener('change', function () { state.detail = $('aiDetail').value; save(); });
+  $('aiRows').addEventListener('change', function () { state.maxRows = parseInt($('aiRows').value, 10) || 20; save(); });
+  $('aiPreferred').addEventListener('change', function () { state.preferred = $('aiPreferred').value; save(); updateOff(); });
+  $('aiOwn').addEventListener('change', function () { state.own = $('aiOwn').checked; save(); refreshUi(); });
   $('aiTeamCode').addEventListener('input', function () { state.teamCode = $('aiTeamCode').value.trim(); save(); });
-  $('aiProvider').addEventListener('change', function () {
-    state.provider = $('aiProvider').value;
-    save();
-    refreshUi();
-  });
+  $('aiProvider').addEventListener('change', function () { state.provider = $('aiProvider').value; save(); refreshUi(); });
   $('aiModel').addEventListener('input', function () { state[state.provider].model = $('aiModel').value; save(); });
   $('aiKey').addEventListener('input', function () { state[state.provider].key = $('aiKey').value.trim(); save(); updateOff(); });
   $('aiClearKeys').addEventListener('click', clearKeys);
-  $('aiSend').addEventListener('click', function () { send(); });
-  $('aiNew').addEventListener('click', newChat);
+  $('aiSend').addEventListener('click', function () { if (state.busy) stop(); else send(); });
   $('aiInput').addEventListener('input', autosize);
   $('aiInput').addEventListener('keydown', function (e) {
-    // Enter sends, Shift+Enter adds a line (Ctrl+Enter also sends)
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    // Enter sends, Shift+Enter adds a line
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!state.busy) send(); }
   });
   Array.prototype.forEach.call(document.querySelectorAll('#aiEmpty .chip'), function (chip) {
     chip.addEventListener('click', function () {
@@ -1785,9 +2024,27 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     });
   });
 
+  // used by the "Ask AI" button on lookup results: switches tabs and pre-fills (does not send)
+  window.ImeiAi = {
+    ask: function (text) {
+      setTab('ai');
+      $('aiInput').value = text;
+      autosize();
+      $('aiInput').focus();
+    }
+  };
+
+  // bring back this session's conversation
+  loadChat().forEach(function (e, i, all) {
+    state.shown.push(e);
+    state.store.transcript.push({ q: e.q, a: e.a });
+    addMessage('user', null, e.q);
+    addAnswer(e.a, e.p, e.q);
+  });
+
   refreshUi();
   showChat();
-  $('aiSettings').open = useOwn() && buildChain().length === 0;
+  showAiSettings(useOwn() && buildChain().length === 0);
   $('tabs').hidden = false;
 })();
 </script>
