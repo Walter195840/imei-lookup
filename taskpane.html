@@ -118,12 +118,12 @@ td.mono { font-family: Consolas, "Cascadia Mono", monospace; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 html, body { height: 100%; overflow: hidden; }
 body { padding: 0; }
-#app { height: 100%; display: flex; flex-direction: column; padding: 10px 12px 8px; transform-origin: top left; }
+#app { height: 100%; display: flex; flex-direction: column; padding: 10px 16px 8px 12px; transform-origin: top left; overflow: hidden; }
 .tab-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
 #tabAI { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* ---- top bar: tabs + one menu ---- */
-.topbar { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-shrink: 0; }
+.topbar { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-shrink: 0; padding-right: 26px; /* Excel draws its own pane handle over the top-right corner */ }
 .tabs { display: flex; flex: 1; gap: 2px; }
 .tabs button { flex: 1; border: 0; border-bottom: 3px solid transparent; background: none; border-radius: 0; padding: 6px 10px; font-weight: 600; color: var(--muted); text-align: center; }
 .tabs button:hover { background: var(--surface); }
@@ -977,11 +977,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
   // ---------- menu (top right) and text size ----------
   var SIZES = [{ name: 'Small', zoom: 0.92 }, { name: 'Normal', zoom: 1 }, { name: 'Large', zoom: 1.12 }];
   var sizeIdx = 1;
-  function applySize() {
-    var z = SIZES[sizeIdx].zoom, app = $('app');
+  function fitApp() {
+    var z = SIZES[sizeIdx].zoom, app = $('app'), root = document.documentElement;
     app.style.zoom = z;
-    app.style.width = (100 / z) + '%';   // keep the zoomed page exactly the size of the pane
-    app.style.height = (100 / z) + '%';
+    // keep the zoomed page exactly the size of the pane (pixels from the real viewport; percentages as a fallback)
+    if (root.clientWidth > 0 && root.clientHeight > 0) {
+      app.style.width = (root.clientWidth / z) + 'px';
+      app.style.height = (root.clientHeight / z) + 'px';
+    } else {
+      app.style.width = (100 / z) + '%';
+      app.style.height = (100 / z) + '%';
+    }
+  }
+  function applySize() {
+    fitApp();
     $('menuTextSize').textContent = 'Text size: ' + SIZES[sizeIdx].name;
   }
   function closeMenu(returnFocus) {
@@ -995,6 +1004,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       if (saved >= 0 && saved < SIZES.length) sizeIdx = saved;
     } catch (e) { /* ignore */ }
     applySize();
+    window.addEventListener('resize', fitApp);
     $('menuBtn').addEventListener('click', function () {
       var open = $('menu').hidden;
       $('menu').hidden = !open;
@@ -1024,7 +1034,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     $('btnClear').addEventListener('click', clearAll);
     $('input').focus();
     $('input').addEventListener('keydown', function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runLookup(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runLookup(); } // plain Enter adds a line
     });
     $('btnRefresh').addEventListener('click', function () {
       showError('');
