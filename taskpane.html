@@ -387,9 +387,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
             <select id="aiProvider">
               <option value="groq">Groq</option>
               <option value="gemini">Google Gemini</option>
-              <option value="mistral">Mistral</option>
               <option value="openrouter">OpenRouter</option>
-              <option value="cerebras">Cerebras</option>
             </select>
             <div id="aiNote" class="hint" style="margin-top:4px"></div>
           </div>
@@ -1465,14 +1463,6 @@ var AiLogic = (function (L) {
       label: 'Groq', defaultModel: 'openai/gpt-oss-120b', keyUrl: 'https://console.groq.com/keys',
       note: 'Groq does not retain prompts by default, and its free tier has small per-minute limits.'
     },
-    cerebras: {
-      label: 'Cerebras', defaultModel: 'gpt-oss-120b', keyUrl: 'https://cloud.cerebras.ai/',
-      note: 'Cerebras gives trial credits (a payment method is needed) rather than a permanent free tier, so it is only used if the server has a key for it. It has its own data policy.'
-    },
-    mistral: {
-      label: 'Mistral', defaultModel: 'mistral-small-latest', keyUrl: 'https://console.mistral.ai/api-keys/',
-      note: 'Mistral\'s free tier can use prompts to train its models unless you opt out in its Admin Console (Privacy).'
-    },
     openrouter: {
       label: 'OpenRouter', defaultModel: 'openai/gpt-oss-120b:free', keyUrl: 'https://openrouter.ai/keys',
       note: 'OpenRouter free models are run by outside providers whose data policies differ, and the free allowance is small.'
@@ -1483,7 +1473,7 @@ var AiLogic = (function (L) {
     }
   };
   // the order they are tried in (Workers AI runs the same model as Groq, so it comes second)
-  var PROVIDER_ORDER = ['groq', 'workersai', 'gemini', 'mistral', 'openrouter', 'cerebras'];
+  var PROVIDER_ORDER = ['groq', 'workersai', 'gemini', 'openrouter'];
   // providers a person can use with their own key (Workers AI only exists on the team server)
   var OWN_KEY_PROVIDERS = PROVIDER_ORDER.filter(function (p) { return !PROVIDERS[p].proxyOnly; });
 
@@ -1683,11 +1673,9 @@ var AiLogic = (function (L) {
       }
     };
   }
-  // Groq, Cerebras, Mistral and OpenRouter speak the same OpenAI-style protocol (Workers AI is answered in that shape by the server).
+  // Groq and OpenRouter speak the same OpenAI-style protocol (Workers AI is answered in that shape by the server).
   var DIRECT_URLS = {
     groq: 'https://api.groq.com/openai/v1/chat/completions',
-    cerebras: 'https://api.cerebras.ai/v1/chat/completions',
-    mistral: 'https://api.mistral.ai/v1/chat/completions',
     openrouter: 'https://openrouter.ai/api/v1/chat/completions'
   };
   function buildGroqRequest(model, target, messages, detail, stream, provider) {
@@ -2153,8 +2141,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     maxRows: 20,                 // rows per lookup: 5 | 10 | 20
     gemini: { key: '', model: A.PROVIDERS.gemini.defaultModel },
     groq: { key: '', model: A.PROVIDERS.groq.defaultModel },
-    cerebras: { key: '', model: A.PROVIDERS.cerebras.defaultModel },
-    mistral: { key: '', model: A.PROVIDERS.mistral.defaultModel },
     openrouter: { key: '', model: A.PROVIDERS.openrouter.defaultModel },
     available: null,             // which providers the team server has set up (null = not known yet)
     teamCode: '',
@@ -2174,7 +2160,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return e;
   }
   function label(p) { return A.PROVIDERS[p].label; }
-  var SHORT = { groq: 'Groq', workersai: 'Workers AI', gemini: 'Gemini', mistral: 'Mistral', openrouter: 'OpenRouter', cerebras: 'Cerebras' };
+  var SHORT = { groq: 'Groq', workersai: 'Workers AI', gemini: 'Gemini', openrouter: 'OpenRouter' };
   function short(p) { return SHORT[p] || p; }
   function useOwn() { return !proxyOn || state.own; }
   function drop(node) { if (node && node.parentNode) node.parentNode.removeChild(node); }
@@ -2199,7 +2185,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     try {
       window.localStorage.setItem(KEY, JSON.stringify({
         provider: state.provider, preferred: state.preferred, detail: state.detail, maxRows: state.maxRows,
-        teamCode: state.teamCode, own: state.own, gemini: state.gemini, groq: state.groq, cerebras: state.cerebras, mistral: state.mistral, openrouter: state.openrouter
+        teamCode: state.teamCode, own: state.own, gemini: state.gemini, groq: state.groq, openrouter: state.openrouter
       }));
     } catch (e) { /* ignore */ }
   }
