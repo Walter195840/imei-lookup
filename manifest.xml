@@ -8,7 +8,7 @@
 
   <Id>68487d2c-5f9c-4c12-9399-8610c074a21f</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>Personal Project</ProviderName>
+  <ProviderName>Walter Yoder</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="IMEI Lookup"/>
   <Description DefaultValue="Look up IMEIs in a table of IMEI ranges. Read-only."/>
