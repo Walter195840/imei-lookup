@@ -15,6 +15,7 @@ The add-in only reads the workbook (and can select a row). It never edits cells.
 | `icon-16.png`, `icon-32.png`, `icon-80.png` | Ribbon and store icons. |
 | `worker/worker.js` | The team AI proxy (Cloudflare Worker). Holds the Groq and Gemini keys. |
 | `worker/README.md` | How to deploy the Worker. |
+| `install/` | One-click desktop installer for coworkers (`add-imei-lookup.reg`, `remove-imei-lookup.reg`) and `HOW-TO.txt`. |
 | `test.js` | Node tests: `node test.js` (IMEI logic, Ask AI logic, fallback, the Worker). |
 
 Only `manifest.xml`, `taskpane.html`, `index.html` and the three icons need to be on GitHub Pages.
@@ -33,13 +34,28 @@ Only `manifest.xml`, `taskpane.html`, `index.html` and the three icons need to b
    close Office and delete everything in `%LOCALAPPDATA%\Microsoft\Office\16.0\Wef\`.
    A changed `manifest.xml` has to be re-added or re-deployed.
 
+## Features
+
+- **Lookup:** one or many IMEIs (14, 15 or 16 digits), every matching range, Go to row, Copy details, Copy results, Use selection,
+  a Recent list (the last few IMEIs, stored only in this browser), and automatic table refresh after you edit the sheet.
+  Smart paste finds the IMEIs in a pasted email or messy list. From 6 IMEIs on, the summary table comes first and the cards are folded.
+  **Table check** (⋯ menu) lists overlapping ranges, From greater than To, and duplicates, with links to the rows.
+- **Ask AI:** answers stream in as they are written; Stop, Regenerate, follow-up suggestions, answer length and rows per lookup in
+  the ⋯ menu, AI settings.
+- **⋯ menu:** Refresh table, Table settings, Use selection, AI settings, Copy conversation, New chat, Text size.
+
 ## Things to know
 
 - **Keys.** No API key is in any file. The Worker holds them as secrets. Do not commit keys.
 - **What the AI sees.** Never the sheet. It calls four local tools (`lookup_imei`, `lookup_many`, `find_rows`, `list_columns`);
   only their results (capped at about 6,000 characters) are sent. The pane lists everything that was sent under "What was sent to the AI".
+- **Streaming.** Groq streams through the existing Worker. For Gemini to stream, redeploy the current `worker/worker.js`
+  (paste it into the Worker's editor and Deploy). Until then Gemini simply answers in one piece.
 - **Free limits.** Groq is tried first; if it is rate-limited the question goes to Gemini. Both are free tiers with small per-minute limits.
   Settings, Rows per lookup, can be lowered to stay under them.
+- **Loading time.** Hover the status line ("N ranges from ...") to see how long the last table read took. A saved local copy for
+  instant opening was left out on purpose: it would keep company data on the PC outside the workbook, and it can show stale data.
+  If reads are slow (more than about 10 seconds) it is worth revisiting.
 - **Team code.** The Worker accepts an optional `TEAM_CODE` secret. Without it anyone who finds the Worker address can use the free quotas.
 - **Publisher name.** The manifest still says `Personal Project`. Change `ProviderName` before sharing widely or publishing to AppSource.
 

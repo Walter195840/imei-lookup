@@ -155,8 +155,38 @@ input[type=text], input[type=password] {
 }
 label.check { display: flex; align-items: center; gap: 6px; font-weight: 400; margin-top: 8px; }
 .panel a { color: var(--accent); }
-.panel-title { font-weight: 600; margin-bottom: 8px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.panel-title { font-weight: 600; }
+.label { font-weight: 600; margin: 0 0 4px; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { flex: 1; border: 0; border-radius: 0; background: none; padding: 5px 6px; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+details.more { margin-top: 4px; }
+details.more > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+details.more[open] > summary { margin-bottom: 8px; }
 .hint.tiny { font-size: 11px; margin-top: 10px; }
+.recent { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+.recent-chips { display: contents; }
+.recent .chip { padding: 1px 8px; font-size: 11px; font-family: Consolas, "Cascadia Mono", monospace; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; }
+.tips { background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; margin: 0 0 10px; }
+.tips-title { font-weight: 600; margin-bottom: 4px; }
+.tips ul { margin: 0 0 8px; padding-left: 18px; }
+.tips li { margin: 3px 0; }
+.paste-note { margin: -2px 0 6px; }
+.bulkbar { display: flex; align-items: center; gap: 4px; margin: 6px 0 2px; }
+.bulkbar .hint { margin-right: auto; }
+.card.compact .card-head { cursor: pointer; }
+.card.compact .card-head::before { content: "\25B8"; color: var(--muted); margin-right: 6px; }
+.card.compact.open .card-head::before { content: "\25BE"; }
+.card.compact .brief { color: var(--accent); font-weight: 600; margin-left: auto; overflow-wrap: anywhere; text-align: right; }
+.card.compact:not(.open) > :not(.card-head) { display: none; }
+.card.compact.open .brief { display: none; }
+#healthBody p { margin: 4px 0; }
+#healthBody .ok { color: var(--accent); font-weight: 600; }
+.followups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.msg.live .md { min-height: 1em; }
 
 /* ---- Ask AI ---- */
 #aiScroll { flex: 1; display: flex; flex-direction: column; }
@@ -184,6 +214,13 @@ label.check { display: flex; align-items: center; gap: 6px; font-weight: 400; ma
 .md pre code { background: none; padding: 0; }
 .md .md-h { font-weight: 600; }
 .md .table-wrap { margin: 0 0 8px; }
+.md table { width: auto; min-width: 100%; }
+.md th, .md td { overflow-wrap: normal; word-break: normal; }
+.md th.nw, .md td.nw, .summary td.mono { white-space: nowrap; }
+.summary table { font-size: 11px; width: auto; min-width: 100%; }
+.summary th, .summary td { overflow-wrap: normal; word-break: normal; padding: 3px 5px; }
+button.rowlink { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
+button.rowlink:hover { background: var(--accent-soft); }
 details.log { margin: 4px 0 8px; }
 details.log > summary { cursor: pointer; font-weight: 600; font-size: 12px; color: var(--muted); }
 .log-entry { margin: 8px 0; font-size: 12px; }
@@ -230,6 +267,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
           <button id="btnRefresh" role="menuitem" type="button" title="Re-read the table from the workbook">Refresh table</button>
           <button id="btnSettings" role="menuitem" type="button" aria-expanded="false" aria-controls="settings">Table settings…</button>
           <button id="btnSelection" role="menuitem" type="button" title="Fill the box with the cells currently selected in the sheet, then look them up">Use selection</button>
+          <button id="btnHealth" role="menuitem" type="button" title="Overlapping ranges, From greater than To, duplicates">Table check…</button>
         </div>
         <div id="menuAI" hidden>
           <button id="aiMenuSettings" role="menuitem" type="button" aria-controls="aiSettings">AI settings…</button>
@@ -244,7 +282,24 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
 
 <div id="tabLookup" role="tabpanel" aria-labelledby="tabBtnLookup">
   <div class="statusbar"><div id="tableStatus" class="status" aria-live="polite"></div></div>
-  <div id="staleBanner" class="banner warn" hidden>The sheet changed since it was read. It will reload on the next lookup; row numbers in the results below may be out of date.</div>
+  <div id="tips" class="tips" hidden>
+    <div class="tips-title">Quick tips</div>
+    <ul>
+      <li><strong>Ctrl+Enter</strong> looks up. You can paste a whole email or a messy list: I find the IMEIs in it.</li>
+      <li>Select IMEI cells in Excel, then <strong>⋯ → Use selection</strong>.</li>
+      <li>The <strong>Ask AI</strong> tab answers plain-language questions about your table.</li>
+    </ul>
+    <button id="tipsDone" type="button" class="small">Got it</button>
+  </div>
+  <div id="staleBanner" class="banner warn" hidden>The sheet changed. Refreshing the table…</div>
+
+  <section id="health" class="panel" hidden aria-label="Table check">
+    <div class="panel-head">
+      <span class="panel-title">Table check</span>
+      <button id="healthClose" class="small ghost" type="button" aria-label="Close table check" title="Close">✕</button>
+    </div>
+    <div id="healthBody"></div>
+  </section>
 
   <section id="settings" class="panel" hidden>
     <div class="hint" style="margin-bottom:8px">Pick where the range table is. Used automatically when the "From IMEI" / "To IMEI" headers can't be found, and applied right away if you save.</div>
@@ -264,6 +319,12 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
     <button id="btnLookup" class="primary" type="button" title="Ctrl+Enter">Lookup</button>
     <button id="btnClear" type="button" class="ghost">Clear</button>
   </div>
+  <div id="pasteNote" class="hint paste-note" hidden></div>
+  <div id="recent" class="recent" hidden>
+    <span class="hint">Recent</span>
+    <button id="recentClear" type="button" class="small ghost" title="Forget recent lookups">Clear</button>
+    <span id="recentChips" class="recent-chips"></span>
+  </div>
 
   <div id="results" aria-live="polite"></div>
   <div id="summary" class="summary"></div>
@@ -272,66 +333,71 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
 <div id="tabAI" role="tabpanel" aria-labelledby="tabBtnAI" hidden>
   <div>
     <section id="aiSettings" class="panel" hidden aria-label="AI settings">
-      <div class="panel-title">AI settings</div>
+      <div class="panel-head">
+        <span class="panel-title">AI settings</span>
+        <button id="aiSettingsDone" class="small ghost" type="button" aria-label="Close settings" title="Close">✕</button>
+      </div>
 
       <div class="field">
-        <label for="aiDetail">Answer length</label>
-        <select id="aiDetail">
-          <option value="short">Short</option>
-          <option value="normal">Normal</option>
-          <option value="detailed">Detailed</option>
-        </select>
+        <div class="label" id="lblDetail">Answer length</div>
+        <div class="seg" id="aiDetail" role="radiogroup" aria-labelledby="lblDetail">
+          <button type="button" role="radio" aria-checked="false" data-value="short">Short</button>
+          <button type="button" role="radio" aria-checked="false" data-value="normal">Normal</button>
+          <button type="button" role="radio" aria-checked="false" data-value="detailed">Detailed</button>
+        </div>
       </div>
       <div class="field">
-        <label for="aiRows">Rows per lookup</label>
-        <select id="aiRows">
-          <option value="5">5</option>
-          <option value="10">10</option>
-          <option value="20">20</option>
-        </select>
-        <div class="hint" style="margin-top:4px">Fewer rows use less of the free per-minute limit and send less data.</div>
+        <div class="label" id="lblRows">Rows per lookup</div>
+        <div class="seg" id="aiRows" role="radiogroup" aria-labelledby="lblRows">
+          <button type="button" role="radio" aria-checked="false" data-value="5">5</button>
+          <button type="button" role="radio" aria-checked="false" data-value="10">10</button>
+          <button type="button" role="radio" aria-checked="false" data-value="20">20</button>
+        </div>
+        <div class="hint" style="margin-top:4px">Fewer rows use less of the free limit and send less data.</div>
       </div>
 
-      <div id="aiProxyBox">
-        <div class="field">
-          <label for="aiPreferred">Try first</label>
-          <select id="aiPreferred">
-            <option value="groq">Groq (Gemini as backup)</option>
-            <option value="gemini">Gemini (Groq as backup)</option>
-          </select>
-        </div>
-        <div class="hint">Ask AI runs through your team's shared connection. You don't need an API key. If the first provider's free limit is reached, the other one answers.</div>
-        <div id="aiProxyNote" class="hint" style="margin-top:6px"></div>
-        <div class="field" style="margin-top:8px">
-          <label for="aiTeamCode">Team access code</label>
-          <input type="password" id="aiTeamCode" spellcheck="false" autocomplete="off">
-          <div class="hint" style="margin-top:4px">Only if your team set one. Saved in this browser.</div>
-        </div>
-        <label class="check"><input type="checkbox" id="aiOwn"> Use my own API keys instead</label>
-      </div>
+      <details id="aiConn" class="more">
+        <summary>Connection</summary>
 
-      <div id="aiOwnBox">
-        <div class="field">
-          <label for="aiProvider">Provider</label>
-          <select id="aiProvider">
-            <option value="groq">Groq</option>
-            <option value="gemini">Google Gemini</option>
-          </select>
-          <div id="aiNote" class="hint" style="margin-top:4px"></div>
+        <div id="aiProxyBox">
+          <div class="hint">Runs through your team's shared connection, so no API key is needed. If the first provider's free limit is reached, the other one answers.</div>
+          <div class="field" style="margin-top:8px">
+            <label for="aiPreferred">Try first</label>
+            <select id="aiPreferred">
+              <option value="groq">Groq (Gemini as backup)</option>
+              <option value="gemini">Gemini (Groq as backup)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="aiTeamCode">Team access code</label>
+            <input type="password" id="aiTeamCode" spellcheck="false" autocomplete="off">
+            <div class="hint" style="margin-top:4px">Only if your team set one.</div>
+          </div>
+          <label class="check"><input type="checkbox" id="aiOwn"> Use my own API keys instead</label>
+          <div id="aiProxyNote" class="hint" style="margin-top:8px"></div>
         </div>
-        <div class="field">
-          <label for="aiModel">Model</label>
-          <input type="text" id="aiModel" spellcheck="false" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="aiKey">API key</label>
-          <input type="password" id="aiKey" spellcheck="false" autocomplete="off">
-          <div class="hint" style="margin-top:4px"><a id="aiKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free key</a>. Saved only in this browser on this computer. If you save a key for both providers, the other one is used as a backup.</div>
-        </div>
-        <button id="aiClearKeys" class="small" type="button">Clear saved keys</button>
-      </div>
 
-      <div class="row"><button id="aiSettingsDone" class="primary small" type="button">Done</button></div>
+        <div id="aiOwnBox">
+          <div class="field">
+            <label for="aiProvider">Provider</label>
+            <select id="aiProvider">
+              <option value="groq">Groq</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+            <div id="aiNote" class="hint" style="margin-top:4px"></div>
+          </div>
+          <div class="field">
+            <label for="aiModel">Model</label>
+            <input type="text" id="aiModel" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="aiKey">API key</label>
+            <input type="password" id="aiKey" spellcheck="false" autocomplete="off">
+            <div class="hint" style="margin-top:4px"><a id="aiKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free key</a>. Saved only in this browser. If you save a key for both providers, the other one is used as a backup.</div>
+          </div>
+          <button id="aiClearKeys" class="small" type="button">Clear saved keys</button>
+        </div>
+      </details>
     </section>
     <div id="aiOff" class="banner info">Ask AI is off until you paste an API key in AI settings (⋯ menu).</div>
   </div>
@@ -486,6 +552,85 @@ var ImeiLogic = (function () {
     return out + '</table>';
   }
 
+  // Smart paste. Finds the IMEIs in whatever was pasted: one per line (the normal case, left exactly as typed),
+  // several on a line (separated by commas, tabs, semicolons or spaces), or buried in other text.
+  // Returns { list: [raw IMEI text], changed: true when the pasted text had to be picked apart }.
+  var PLAIN_IMEI_TEXT = /^\s*(?:imei(?:sv)?\s*[:#-]?\s*)?[\d\s.-]+$/i;
+  function digitCount(s) { return s.replace(/\D/g, '').length; }
+  function scanForImeis(piece) {
+    var found = [];
+    var groups = piece.match(/\d+(?:[-.]\d+)*(?:\s\d{2,}(?:[-.]\d+)*)*/g) || [];
+    groups.forEach(function (g) {
+      var n = digitCount(g);
+      if (n >= 14 && n <= 16) { found.push(g.trim()); return; }
+      if (n > 16) g.split(/\s+/).forEach(function (t) { var k = digitCount(t); if (k >= 14 && k <= 16) found.push(t); });
+    });
+    return found;
+  }
+  function extractImeiCandidates(text) {
+    var out = [], changed = false;
+    String(text == null ? '' : text).split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      var pieces = line.split(/[,;\t|]+/).filter(function (p) { return p.trim() !== ''; });
+      var good = [], asIs = [];
+      pieces.forEach(function (piece) {
+        var d = digitCount(piece);
+        if (PLAIN_IMEI_TEXT.test(piece) && d <= 16) {           // an ordinary IMEI (or a wrong-length number: reported as before)
+          asIs.push(piece.trim());
+          if (d >= 14) good.push(piece.trim());
+          return;
+        }
+        var found = scanForImeis(piece);
+        if (found.length) { found.forEach(function (f) { good.push(f); }); changed = true; }
+        else asIs.push(piece.trim());
+      });
+      if (pieces.length > 1 && good.length) { changed = true; good.forEach(function (g) { out.push(g); }); }
+      else (good.length && pieces.length === 1 ? good : asIs).forEach(function (x) { out.push(x); });
+    });
+    return { list: out, changed: changed };
+  }
+
+  // Table check: ranges that overlap an earlier range, From greater than To, exact duplicates.
+  // rows: [{ from, to, sheetRow (0-based) }]. Row numbers in the result are 1-based sheet rows.
+  function analyzeRanges(rows) {
+    var order = rows.map(function (r, i) { return i; }).sort(function (a, b) {
+      return rows[a].from < rows[b].from ? -1 : rows[a].from > rows[b].from ? 1 : a - b;
+    });
+    var overlaps = [], overlapCount = 0, maxTo = '', maxAt = -1, inverted = [], dup = 0, seen = {};
+    order.forEach(function (i) {
+      var r = rows[i], key = r.from + '|' + r.to;
+      if (r.from > r.to) inverted.push(r.sheetRow + 1);
+      if (seen[key]) dup++; else seen[key] = 1;
+      if (maxAt >= 0 && r.from <= maxTo) {
+        overlapCount++;
+        if (overlaps.length < 10) overlaps.push([rows[maxAt].sheetRow + 1, r.sheetRow + 1]);
+      }
+      if (maxAt < 0 || r.to > maxTo) { maxTo = r.to; maxAt = i; }
+    });
+    return { total: rows.length, overlapCount: overlapCount, overlaps: overlaps,
+      invertedCount: inverted.length, inverted: inverted.slice(0, 10), duplicates: dup };
+  }
+
+  // Recent IMEIs, newest first, no duplicates, at most max. list = saved IMEIs, imeis = ones just looked up.
+  function addRecent(list, imeis, max) {
+    var seen = {}, out = [];
+    (imeis || []).concat(Array.isArray(list) ? list : []).forEach(function (v) {
+      if (typeof v === 'string' && /^\d{15}$/.test(v) && !seen[v]) { seen[v] = 1; out.push(v); }
+    });
+    return out.slice(0, max);
+  }
+
+  // Plain text for one result card ("Copy details"). rows: [{ row, pairs:[[header, value], ...] }]
+  function formatCardText(imei, rows) {
+    var out = ['IMEI: ' + imei];
+    rows.forEach(function (r, i) {
+      if (rows.length > 1) out.push('', 'Match ' + (i + 1) + ' of ' + rows.length);
+      out.push('Sheet row: ' + r.row);
+      r.pairs.forEach(function (p) { out.push(p[0] + ': ' + p[1]); });
+    });
+    return out.join('\n');
+  }
+
   function colLetter(i) {
     var s = '';
     for (i = i + 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
@@ -496,7 +641,9 @@ var ImeiLogic = (function () {
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
     dedupeNormalized: dedupeNormalized,
-    toTsv: toTsv, toHtmlTable: toHtmlTable, colLetter: colLetter
+    toTsv: toTsv, toHtmlTable: toHtmlTable, colLetter: colLetter,
+    addRecent: addRecent, formatCardText: formatCardText,
+    extractImeiCandidates: extractImeiCandidates, analyzeRanges: analyzeRanges
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
@@ -613,6 +760,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
             var rng = sheet.getRangeByIndexes(r0, colOffset, n, ncols);
             rng.load('text');
             return ctx.sync().then(function () {
+              setStatus('Reading table… ' + Math.min(99, Math.round(100 * (r0 + n - start) / (lastRow - start + 1))) + '%');
               for (var i = 0; i < n; i++) {
                 var cells = rng.text[i];
                 var ftxt = cells[table.fromIdx], ttxt = cells[table.toIdx];
@@ -649,6 +797,33 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     });
   }
 
+  // After an edit, reload the table in the background (once the edits pause) so lookups stay current.
+  var refreshTimer = null;
+  function scheduleAutoRefresh() {
+    var b = $('staleBanner');
+    b.className = 'banner warn';
+    b.textContent = 'The sheet changed. Refreshing the table…';
+    b.hidden = false;
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(function () {
+      refreshTimer = null;
+      ensureTable(false).then(function (t) {
+        if (!t) return;
+        if ($('results').children.length) {
+          b.className = 'banner info';
+          b.textContent = 'The table was refreshed after your edit. Run Lookup again to update the results above.';
+          b.hidden = false;
+        } else {
+          b.hidden = true;
+        }
+      }).catch(function () {
+        b.className = 'banner warn';
+        b.textContent = 'The sheet changed, but the table could not be refreshed. Use Refresh table in the \u22EF menu.';
+        b.hidden = false;
+      });
+    }, 2500);
+  }
+
   function registerChangeHandler(sheetName) {
     if (state.handlerSheet === sheetName) return;
     try {
@@ -658,7 +833,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       var ws = ctx.workbook.worksheets.getItem(sheetName);
       ws.onChanged.add(function () {
         state.table = null;
-        $('staleBanner').hidden = false;
+        scheduleAutoRefresh();
         return Promise.resolve();
       });
       return ctx.sync().then(function () { state.handlerSheet = sheetName; });
@@ -671,6 +846,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     if (state.table) return Promise.resolve(state.table);
     if (state.loading) return state.loading;
     setStatus('Reading table…');
+    var t0 = Date.now();
     state.loading = resolveConfig().then(function (cfg) {
       if (!cfg) return null;
       return readTable(cfg);
@@ -686,7 +862,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       var msg = table.rows.length.toLocaleString() + ' ranges from "' + table.sheet + '"';
       if (table.skipped) msg += '. ' + table.skipped.toLocaleString() + ' rows skipped: From/To not a plain number.';
       setStatus(msg);
-      $('tableStatus').title = msg + ' (header row ' + (table.headerRow + 1) + ')';
+      $('tableStatus').title = msg + ' (header row ' + (table.headerRow + 1) + ', read in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)';
+      var sample = table.rows[Math.floor(table.rows.length / 2)];
+      if (sample) $('input').placeholder = 'e.g. ' + sample.from + '\nCtrl+Enter to look up'; // a real IMEI from this table
       registerChangeHandler(table.sheet);
       return table;
     }, function (err) {
@@ -795,12 +973,85 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     }).catch(function (e) { showError('Could not select the row: ' + (e && e.message ? e.message : e)); });
   }
 
-  function renderCard(norm, matches, table, count) {
-    var cls = 'card' + (!norm.ok ? ' bad' : matches.length === 0 ? ' nomatch' : '');
+  // ---------- table check ----------
+  function rowLink(n) {
+    var b = el('button', 'rowlink', 'row ' + n);
+    b.type = 'button';
+    b.title = 'Select row ' + n + ' in the sheet';
+    b.addEventListener('click', function () { goToSheetRow(n); });
+    return b;
+  }
+  function pairsLine(prefix, pairs) {
+    var p = el('p', null, prefix + ' ');
+    pairs.forEach(function (pr, i) {
+      if (i) p.appendChild(document.createTextNode(', '));
+      p.appendChild(rowLink(pr[0])); p.appendChild(document.createTextNode(' and ')); p.appendChild(rowLink(pr[1]));
+    });
+    return p;
+  }
+  function showHealth() {
+    var body = $('healthBody'), t = state.table;
+    body.textContent = '';
+    if (!t) {
+      body.appendChild(el('p', null, 'The table is not loaded yet. Try again in a moment.'));
+    } else {
+      var a = L.analyzeRanges(t.rows), bad = 0;
+      body.appendChild(el('p', null, a.total.toLocaleString() + ' ranges read from "' + t.sheet + '".'));
+      if (t.skipped) {
+        bad++;
+        body.appendChild(el('p', null, (t.skipped === 1 ? '1 row was' : t.skipped.toLocaleString() + ' rows were') + ' skipped because From or To is not a plain number.'));
+      }
+      if (a.overlapCount) {
+        bad++;
+        body.appendChild(el('p', null, (a.overlapCount === 1 ? '1 range overlaps' : a.overlapCount.toLocaleString() + ' ranges overlap') +
+          ' an earlier range. A lookup returns every matching range, so this is fine if it is intended.'));
+        body.appendChild(pairsLine('First ones:', a.overlaps.slice(0, 5)));
+      }
+      if (a.invertedCount) {
+        bad++;
+        var p = el('p', null, (a.invertedCount === 1 ? '1 range has From greater than To, so it never matches: '
+          : a.invertedCount.toLocaleString() + ' ranges have From greater than To, so they never match: '));
+        a.inverted.slice(0, 6).forEach(function (n, i) { if (i) p.appendChild(document.createTextNode(', ')); p.appendChild(rowLink(n)); });
+        body.appendChild(p);
+      }
+      if (a.duplicates) {
+        bad++;
+        body.appendChild(el('p', null, a.duplicates === 1 ? '1 range is an exact duplicate of another range.'
+          : a.duplicates.toLocaleString() + ' ranges are exact duplicates of other ranges.'));
+      }
+      if (!bad) body.appendChild(el('p', 'ok', 'No problems found.'));
+    }
+    $('health').hidden = false;
+    $('health').scrollIntoView({ block: 'nearest' });
+  }
+
+  // Select a row by its sheet row number (1-based), for "row 86014" links in AI answers.
+  function goToSheetRow(rowNumber) {
+    var t = state.table;
+    if (!t) { showError('The table is not loaded yet. Try again in a moment.'); return; }
+    if (!(rowNumber >= 1)) return;
+    goToRow(t, { sheetRow: rowNumber - 1 });
+  }
+
+  function renderCard(norm, matches, table, count, compact) {
+    var fold = !!compact && norm.ok && matches.length > 0; // problems and "no match" stay fully visible
+    var cls = 'card' + (!norm.ok ? ' bad' : matches.length === 0 ? ' nomatch' : '') + (fold ? ' compact' : '');
     var card = el('section', cls);
     var head = el('div', 'card-head');
     head.appendChild(el('span', 'imei', norm.ok ? norm.imei : (norm.input || '(empty)')));
     if (norm.ok && matches.length > 1) head.appendChild(el('span', 'count', matches.length + ' matching rows'));
+    if (fold) {
+      head.appendChild(el('span', 'brief', uniqueJoin(matches.map(function (r) { return deviceOf(table, r); })) || '(no Device Type)'));
+      head.setAttribute('role', 'button');
+      head.setAttribute('tabindex', '0');
+      head.setAttribute('aria-expanded', 'false');
+      var toggle = function () {
+        var open = card.classList.toggle('open');
+        head.setAttribute('aria-expanded', String(open));
+      };
+      head.addEventListener('click', toggle);
+      head.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    }
     card.appendChild(head);
     if (count > 1) card.appendChild(el('div', 'note', 'Entered ' + count + ' times.'));
     norm.notes.forEach(function (n) { card.appendChild(el('div', 'note', n)); });
@@ -827,12 +1078,30 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       m.appendChild(btn);
       card.appendChild(m);
     });
+    var actions = el('div', 'card-actions');
+    var copy = el('button', 'small ghost', 'Copy details');
+    copy.type = 'button';
+    copy.addEventListener('click', function () {
+      var rows = matches.map(function (row) {
+        var pairs = [], dev = deviceOf(table, row);
+        if (table.deviceIdx >= 0 && dev) pairs.push([table.headers[table.deviceIdx], dev]);
+        table.headers.forEach(function (hd, i) {
+          if (i === table.deviceIdx) return;
+          var v = String(row.cells[i]).trim();
+          if (v) pairs.push([hd, v]);
+        });
+        return { row: row.sheetRow + 1, pairs: pairs };
+      });
+      copyText(L.formatCardText(norm.imei, rows), copy);
+    });
+    actions.appendChild(copy);
     if (window.ImeiAi) {
       var ask = el('button', 'small ghost', 'Ask AI about this');
       ask.type = 'button';
       ask.addEventListener('click', function () { window.ImeiAi.ask('What device is ' + norm.imei + '?'); });
-      card.appendChild(ask);
+      actions.appendChild(ask);
     }
+    card.appendChild(actions);
     return card;
   }
 
@@ -916,13 +1185,44 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     box.appendChild(row);
   }
 
+  // ---------- recent lookups (kept in this browser only) ----------
+  var RECENT_KEY = 'imeiLookup.recent', MAX_RECENT = 8;
+  function loadRecent() {
+    try {
+      var a = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+      return L.addRecent(a, [], MAX_RECENT);
+    } catch (e) { return []; }
+  }
+  function saveRecent(list) {
+    try { window.localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+  }
+  function renderRecent() {
+    var list = loadRecent(), box = $('recentChips');
+    box.textContent = '';
+    list.forEach(function (imei) {
+      var b = el('button', 'chip', imei);
+      b.type = 'button';
+      b.title = 'Look up ' + imei;
+      b.addEventListener('click', function () { $('input').value = imei; runLookup(); });
+      box.appendChild(b);
+    });
+    $('recent').hidden = list.length === 0;
+  }
+
   // ---------- lookup ----------
+  var COMPACT_AT = 6; // from this many IMEIs on, results start collapsed and the summary comes first
   function runLookup() {
     showError('');
-    var lines = $('input').value.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+    var found = L.extractImeiCandidates($('input').value);
+    var lines = found.list;
     $('results').textContent = '';
     $('summary').textContent = '';
+    $('pasteNote').hidden = true;
     if (!lines.length) { showError('Enter at least one IMEI.'); return; }
+    if (found.changed) {
+      $('pasteNote').textContent = 'Found ' + lines.length + ' IMEI' + (lines.length === 1 ? '' : 's') + ' in the pasted text.';
+      $('pasteNote').hidden = false;
+    }
 
     var norms = lines.map(L.normalizeImei);
     var btn = $('btnLookup');
@@ -935,10 +1235,34 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
       var items = L.dedupeNormalized(norms).map(function (d) {
         return { norm: d.norm, count: d.count, matches: d.norm.ok ? L.findMatches(table.rows, d.norm.imei) : [] };
       });
+      var compact = items.length >= COMPACT_AT;
       var frag = document.createDocumentFragment();
-      items.forEach(function (it) { frag.appendChild(renderCard(it.norm, it.matches, table, it.count)); });
+      if (compact) {
+        var bar = el('div', 'bulkbar');
+        bar.appendChild(el('span', 'hint', items.length + ' IMEIs. Click one to see its details.'));
+        [['Expand all', true], ['Collapse all', false]].forEach(function (spec) {
+          var b = el('button', 'small ghost', spec[0]);
+          b.type = 'button';
+          b.addEventListener('click', function () {
+            Array.prototype.forEach.call($('results').querySelectorAll('.card.compact'), function (c) {
+              c.classList.toggle('open', spec[1]);
+              c.querySelector('.card-head').setAttribute('aria-expanded', String(spec[1]));
+            });
+          });
+          bar.appendChild(b);
+        });
+        frag.appendChild(bar);
+      }
+      items.forEach(function (it) { frag.appendChild(renderCard(it.norm, it.matches, table, it.count, compact)); });
       $('results').appendChild(frag);
-      if (table) renderSummary(items, table);
+      if (table) {
+        renderSummary(items, table);
+        // a big batch reads best as a table first, with the cards folded below it
+        var res = $('results');
+        res.parentNode.insertBefore($('summary'), compact ? res : res.nextSibling);
+        var okList = items.filter(function (it) { return it.norm.ok; }).map(function (it) { return it.norm.imei; });
+        if (okList.length) { saveRecent(L.addRecent(loadRecent(), okList, MAX_RECENT)); renderRecent(); }
+      }
     }).catch(showLoadError).then(function () { btn.disabled = false; });
   }
 
@@ -978,8 +1302,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
   }
 
   // ---------- menu (top right) and text size ----------
-  var SIZES = [{ name: 'Small', zoom: 0.92 }, { name: 'Normal', zoom: 1 }, { name: 'Large', zoom: 1.12 }];
-  var sizeIdx = 1;
+  var SIZES = [{ name: 'Small', zoom: 0.92 }, { name: 'Normal', zoom: 1 }, { name: 'Large', zoom: 1.12 }, { name: 'Extra large', zoom: 1.25 }];
+  var sizeIdx = 2; // Large unless the person picked another size
   function applySize() {
     document.documentElement.style.setProperty('--z', String(SIZES[sizeIdx].zoom)); // CSS scales the whole page
     $('menuTextSize').textContent = 'Text size: ' + SIZES[sizeIdx].name;
@@ -1019,6 +1343,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
   // ---------- startup ----------
   function init() {
     initMenu();
+    renderRecent();
+    $('recentClear').addEventListener('click', function () { saveRecent([]); renderRecent(); });
+    $('btnHealth').addEventListener('click', showHealth);
+    $('healthClose').addEventListener('click', function () { $('health').hidden = true; });
+    var tipsSeen = false;
+    try { tipsSeen = window.localStorage.getItem('imeiLookup.tipsSeen') === '1'; } catch (e) { /* ignore */ }
+    $('tips').hidden = tipsSeen;
+    $('tipsDone').addEventListener('click', function () {
+      $('tips').hidden = true;
+      try { window.localStorage.setItem('imeiLookup.tipsSeen', '1'); } catch (e) { /* ignore */ }
+      $('input').focus();
+    });
     $('btnLookup').addEventListener('click', runLookup);
     $('btnSelection').addEventListener('click', useSelection);
     $('btnClear').addEventListener('click', clearAll);
@@ -1050,7 +1386,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
   }
 
   // Small surface used by the Ask AI script (which is loaded separately)
-  window.ImeiApp = { ensureTable: ensureTable, copyText: copyText };
+  window.ImeiApp = { ensureTable: ensureTable, copyText: copyText, goToSheetRow: goToSheetRow };
 
   if (typeof Office === 'undefined' || typeof Office.onReady !== 'function') {
     showOutside();
@@ -1083,7 +1419,7 @@ var AiLogic = (function (L) {
 
   var DETAIL_HINTS = {
     short: 'Keep answers to one or two short sentences and give only what was asked.',
-    normal: 'Keep answers brief but natural, usually two to four sentences. Mention the manufacturer, model and sheet row when they help.',
+    normal: 'Keep answers brief but natural, usually two to four sentences. For a device lookup, give the device type and also mention the manufacturer, model and sheet row.',
     detailed: 'Give a fuller answer: include manufacturer, model, sheet row and other relevant fields for each result.'
   };
   function systemPromptFor(detail) {
@@ -1271,16 +1607,18 @@ var AiLogic = (function (L) {
   function asTarget(t) { return typeof t === 'string' ? { key: t } : (t || {}); }
   function proxyBase(t) { return String(t.proxy).replace(/\/+$/, ''); }
 
-  function buildGeminiRequest(model, target, contents, detail) {
+  // stream = true asks the provider to send the answer piece by piece.
+  function buildGeminiRequest(model, target, contents, detail, stream) {
     var t = asTarget(target);
     var m = String(model).trim().replace(/^models\//, '');
     var headers = { 'Content-Type': 'application/json' };
     var url;
     if (t.proxy) {
-      url = proxyBase(t) + '/gemini/' + encodeURIComponent(m);
+      url = proxyBase(t) + '/gemini/' + encodeURIComponent(m) + (stream ? '?stream=1' : '');
       if (t.code) headers['X-Team-Code'] = t.code;
     } else {
-      url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent';
+      url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) +
+        (stream ? ':streamGenerateContent?alt=sse' : ':generateContent');
       headers['x-goog-api-key'] = t.key;
     }
     return {
@@ -1296,7 +1634,7 @@ var AiLogic = (function (L) {
       }
     };
   }
-  function buildGroqRequest(model, target, messages, detail) {
+  function buildGroqRequest(model, target, messages, detail, stream) {
     var t = asTarget(target);
     var headers = { 'Content-Type': 'application/json' };
     var url;
@@ -1307,19 +1645,14 @@ var AiLogic = (function (L) {
       url = 'https://api.groq.com/openai/v1/chat/completions';
       headers['Authorization'] = 'Bearer ' + t.key;
     }
-    return {
-      url: url,
-      init: {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          model: String(model).trim(),
-          messages: [{ role: 'system', content: systemPromptFor(detail) }].concat(messages),
-          tools: groqTools(),
-          tool_choice: 'auto'
-        })
-      }
+    var body = {
+      model: String(model).trim(),
+      messages: [{ role: 'system', content: systemPromptFor(detail) }].concat(messages),
+      tools: groqTools(),
+      tool_choice: 'auto'
     };
+    if (stream) body.stream = true;
+    return { url: url, init: { method: 'POST', headers: headers, body: JSON.stringify(body) } };
   }
 
   // -> { text, calls:[{ id, name, args }], append } where append is the model turn for the history
@@ -1351,22 +1684,120 @@ var AiLogic = (function (L) {
     return { text: msg.content || '', calls: calls, append: append };
   }
 
-  async function post(fetchFn, req) {
+  // Sends a request. Resolves the response when the provider accepted it; throws a friendly error otherwise.
+  async function send(fetchFn, req) {
     var res;
     try { res = await fetchFn(req.url, req.init); }
     catch (e) {
       if (e && (e.name === 'AbortError' || e.cancelled)) throw cancelledError();
       throw apiError(0, e && e.message);
     }
-    var body = await res.text();
-    var data = null;
-    try { data = JSON.parse(body); } catch (e) { data = null; }
     if (!res.ok) {
+      var body = await res.text();
+      var data = null;
+      try { data = JSON.parse(body); } catch (e) { data = null; }
+      if (Array.isArray(data)) data = data[0];
       var detail = data && data.error && (typeof data.error === 'string' ? data.error : data.error.message);
       throw apiError(res.status, detail || body.slice(0, 300));
     }
+    return res;
+  }
+  async function readJson(res) {
+    var body = await res.text();
+    var data = null;
+    try { data = JSON.parse(body); } catch (e) { data = null; }
     if (data === null) throw new Error('The provider sent a reply that was not valid JSON.');
     return data;
+  }
+
+  // Server-sent events: calls onEvent with the parsed JSON of every "data:" line.
+  async function readSse(res, onEvent) {
+    var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
+    function line(l) {
+      l = l.replace(/\r$/, '');
+      if (l.indexOf('data:') !== 0) return;
+      var p = l.slice(5).trim();
+      if (!p || p === '[DONE]') return;
+      var ev;
+      try { ev = JSON.parse(p); } catch (e) { return; }
+      onEvent(ev);
+    }
+    for (;;) {
+      var r = await reader.read();
+      if (r.done) break;
+      buf += dec.decode(r.value, { stream: true });
+      var parts = buf.split('\n');
+      buf = parts.pop();
+      parts.forEach(line);
+    }
+    buf += dec.decode();
+    if (buf) line(buf);
+  }
+
+  // OpenAI-style stream (Groq): text arrives in delta.content, tool calls arrive in fragments per index.
+  async function readGroqStream(res, onToken) {
+    var text = '', byIndex = {};
+    await readSse(res, function (ev) {
+      if (ev.error) throw apiError(500, typeof ev.error === 'string' ? ev.error : ev.error.message);
+      var ch = ev.choices && ev.choices[0];
+      if (!ch || !ch.delta) return;
+      var d = ch.delta;
+      if (typeof d.content === 'string' && d.content) { text += d.content; if (onToken) onToken(d.content); }
+      (d.tool_calls || []).forEach(function (tc) {
+        var i = tc.index == null ? 0 : tc.index;
+        var c = byIndex[i] || (byIndex[i] = { id: '', name: '', args: '' });
+        if (tc.id) c.id = tc.id;
+        if (tc.function) {
+          if (tc.function.name) c.name = tc.function.name;
+          if (tc.function.arguments) c.args += tc.function.arguments;
+        }
+      });
+    });
+    var raw = Object.keys(byIndex).map(Number).sort(function (a, b) { return a - b; }).map(function (i) { return byIndex[i]; });
+    var calls = raw.map(function (c) {
+      var args;
+      try { args = c.args ? JSON.parse(c.args) : {}; } catch (e) { args = { __unparseable_arguments: c.args }; }
+      return { id: c.id, name: c.name, args: args };
+    });
+    var append = { role: 'assistant', content: text || null };
+    if (raw.length) {
+      append.tool_calls = raw.map(function (c) {
+        return { id: c.id, type: 'function', function: { name: c.name, arguments: c.args || '{}' } };
+      });
+    }
+    return { text: text, calls: calls, append: append };
+  }
+
+  // Gemini stream: every event carries some parts. They are kept exactly as returned (thought signatures).
+  async function readGeminiStream(res, onToken) {
+    var parts = [], calls = [], text = '', blocked = '', finish = '';
+    await readSse(res, function (ev) {
+      if (ev.error) throw apiError(500, ev.error.message);
+      var cand = ev.candidates && ev.candidates[0];
+      if (!cand) { if (ev.promptFeedback && ev.promptFeedback.blockReason) blocked = ev.promptFeedback.blockReason; return; }
+      if (cand.finishReason) finish = cand.finishReason;
+      ((cand.content && cand.content.parts) || []).forEach(function (p) {
+        parts.push(p);
+        if (p.functionCall) calls.push({ id: p.functionCall.id, name: p.functionCall.name, args: p.functionCall.args || {} });
+        else if (typeof p.text === 'string' && p.text && !p.thought) { text += p.text; if (onToken) onToken(p.text); }
+      });
+    });
+    if (!parts.length) throw new Error('Gemini returned no answer (' + (blocked || finish || 'no content') + ').');
+    return { text: text, calls: calls, append: { role: 'model', parts: parts } };
+  }
+
+  // Reads one model turn. A stream is used only when asked for and when the server really sent one;
+  // otherwise (for example an older proxy) the ordinary JSON reply is read.
+  async function readTurn(gem, res, onToken) {
+    var ct = (res.headers && typeof res.headers.get === 'function' && res.headers.get('content-type')) || '';
+    var canStream = !!onToken && /event-stream/i.test(ct) && res.body && typeof res.body.getReader === 'function' && typeof TextDecoder !== 'undefined';
+    try {
+      if (canStream) return await (gem ? readGeminiStream : readGroqStream)(res, onToken);
+      return (gem ? readGemini : readGroq)(await readJson(res));
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw cancelledError();
+      throw e;
+    }
   }
 
   // One question, with up to MAX_ROUNDS rounds of local tool calls.
@@ -1383,8 +1814,11 @@ var AiLogic = (function (L) {
       for (var round = 0; ; round++) {
         if (o.shouldStop && o.shouldStop()) throw cancelledError();
         status('Thinking…');
-        var req = gem ? buildGeminiRequest(o.model, o.key, hist, o.detail) : buildGroqRequest(o.model, o.key, hist, o.detail);
-        var turn = (gem ? readGemini : readGroq)(await post(o.fetchFn, req));
+        var streaming = typeof o.onToken === 'function';
+        var req = gem ? buildGeminiRequest(o.model, o.key, hist, o.detail, streaming)
+                      : buildGroqRequest(o.model, o.key, hist, o.detail, streaming);
+        var turn = await readTurn(gem, await send(o.fetchFn, req), streaming ? o.onToken : null);
+        if (o.onRoundEnd) o.onRoundEnd(turn.calls.length > 0); // text streamed before a tool call is not the answer
         if (turn.calls.length === 0) {
           hist.push(turn.append);
           return { text: turn.text || '(The model returned an empty answer.)' };
@@ -1526,6 +1960,28 @@ var AiLogic = (function (L) {
     }).join('\n\n');
   }
 
+  // Quick follow-up chips shown under an answer. send = ask straight away; otherwise the text is put in the box.
+  function suggestFollowUps(question) {
+    var q = String(question == null ? '' : question);
+    if (/\d{14,16}/.test(q.replace(/[\s-]/g, ''))) {
+      return [
+        { label: 'Show the full details', text: 'Show the full details for that IMEI.', send: true },
+        { label: 'Which sheet row?', text: 'Which sheet row is that on?', send: true },
+        { label: 'Look up another', text: 'What device is ', send: false }
+      ];
+    }
+    if (/column/i.test(q)) {
+      return [
+        { label: 'Find by manufacturer', text: 'Find rows where Manufacturer contains ', send: false },
+        { label: 'Look up an IMEI', text: 'What device is ', send: false }
+      ];
+    }
+    return [
+      { label: 'Look up an IMEI', text: 'What device is ', send: false },
+      { label: 'List the columns', text: 'List the columns in the table.', send: true }
+    ];
+  }
+
   // ---------- fallback between providers ----------
   var COOLDOWN_MS = 60000;
 
@@ -1579,7 +2035,7 @@ var AiLogic = (function (L) {
         var res = await runChat({
           provider: c.provider, model: c.model, key: c.target, history: h.msgs, question: o.question,
           executeTool: o.executeTool, fetchFn: o.fetchFn, onLog: o.onLog, onStatus: o.onStatus,
-          detail: o.detail, shouldStop: o.shouldStop
+          detail: o.detail, shouldStop: o.shouldStop, onToken: o.onToken, onRoundEnd: o.onRoundEnd
         });
         if (res.stopped) return { text: res.text, stopped: true, provider: c.provider, switched: switched };
         store.transcript.push({ q: o.question, a: res.text });
@@ -1587,6 +2043,7 @@ var AiLogic = (function (L) {
         return { text: res.text, provider: c.provider, switched: switched };
       } catch (e) {
         if (e && e.cancelled) throw e; // Stop is never a reason to try another provider
+        if (o.onReset) o.onReset(); // drop any half-streamed text before the next provider answers
         errors.push({ label: c.label || c.provider, message: e && e.message ? e.message : String(e) });
         if (!isFallbackStatus(e && e.status)) break;
         if (e.status === 429) store.cooldown[c.provider] = now + COOLDOWN_MS;
@@ -1605,7 +2062,7 @@ var AiLogic = (function (L) {
     buildGeminiRequest: buildGeminiRequest, buildGroqRequest: buildGroqRequest, runChat: runChat,
     isFallbackStatus: isFallbackStatus, seedHistory: seedHistory, newStore: newStore, runWithFallback: runWithFallback,
     parseMarkdown: parseMarkdown, toPlainText: toPlainText,
-    systemPromptFor: systemPromptFor, undoLast: undoLast
+    systemPromptFor: systemPromptFor, undoLast: undoLast, suggestFollowUps: suggestFollowUps
   };
 })(ImeiLogic);
 if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
@@ -1725,15 +2182,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   }
 
   // ---------- settings panel ----------
+  // segmented control: exactly one button is checked
+  function setSeg(id, value) {
+    Array.prototype.forEach.call($(id).querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-checked', String(b.getAttribute('data-value') === value));
+    });
+  }
   function showAiSettings(show) {
+    if (show && useOwn() && buildChain().length === 0) $('aiConn').open = true; // show the key box when a key is needed
     $('aiSettings').hidden = !show;
     $('aiMenuSettings').setAttribute('aria-expanded', String(show));
     if (show) $('aiSettings').scrollIntoView({ block: 'nearest' });
   }
   function refreshUi() {
     var p = state.provider, cfg = state[p], meta = A.PROVIDERS[p];
-    $('aiDetail').value = state.detail;
-    $('aiRows').value = String(state.maxRows);
+    setSeg('aiDetail', state.detail);
+    setSeg('aiRows', String(state.maxRows));
     $('aiPreferred').value = state.preferred;
     $('aiProxyBox').hidden = !proxyOn;
     $('aiOwnBox').hidden = !useOwn();
@@ -1767,9 +2231,24 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
 
   // ---------- rendering ----------
   // Markdown from the model is turned into DOM nodes with createElement/textContent only.
+  // "sheet row 86014" / "row 86014" in an answer becomes a link that selects that row in Excel
+  function addTextWithRowLinks(s, parent) {
+    if (!window.ImeiApp || !window.ImeiApp.goToSheetRow) { parent.appendChild(document.createTextNode(s)); return; }
+    var re = /\b(?:sheet row|rows?)\s+(\d{1,7})\b/gi, last = 0, m;
+    while ((m = re.exec(s))) {
+      if (m.index > last) parent.appendChild(document.createTextNode(s.slice(last, m.index)));
+      var b = el('button', 'rowlink', m[0]), n = parseInt(m[1], 10);
+      b.type = 'button';
+      b.title = 'Select row ' + n + ' in the sheet';
+      b.addEventListener('click', function (num) { return function () { window.ImeiApp.goToSheetRow(num); }; }(n));
+      parent.appendChild(b);
+      last = m.index + m[0].length;
+    }
+    if (last < s.length) parent.appendChild(document.createTextNode(s.slice(last)));
+  }
   function renderInline(tokens, parent) {
     tokens.forEach(function (t) {
-      if (t.t === 'text') parent.appendChild(document.createTextNode(t.v));
+      if (t.t === 'text') addTextWithRowLinks(t.v, parent);
       else if (t.t === 'br') parent.appendChild(document.createElement('br'));
       else if (t.t === 'code') parent.appendChild(el('code', null, t.v));
       else {
@@ -1795,12 +2274,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
       } else if (b.type === 'table') {
         node = el('div', 'table-wrap');
         var tbl = document.createElement('table'), thead = document.createElement('thead'), htr = document.createElement('tr');
-        b.header.forEach(function (c) { var th = document.createElement('th'); renderInline(c, th); htr.appendChild(th); });
+        b.header.forEach(function (c) { var th = document.createElement('th'); renderInline(c, th); if (th.textContent.length <= 28) th.className = 'nw'; htr.appendChild(th); });
         thead.appendChild(htr); tbl.appendChild(thead);
         var tbody = document.createElement('tbody');
         b.rows.forEach(function (r) {
           var tr = document.createElement('tr');
-          r.forEach(function (c) { var td = document.createElement('td'); renderInline(c, td); tr.appendChild(td); });
+          r.forEach(function (c) { var td = document.createElement('td'); renderInline(c, td); if (td.textContent.length <= 28) td.className = 'nw'; tr.appendChild(td); });
           tbody.appendChild(tr);
         });
         tbl.appendChild(tbody); node.appendChild(tbl);
@@ -1831,11 +2310,59 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return m;
   }
 
+  // ---- the answer as it streams in ----
+  var live = null;
+  function liveClear() {
+    if (!live) return;
+    if (live.raf && window.cancelAnimationFrame) window.cancelAnimationFrame(live.raf);
+    drop(live.node);
+    live = null;
+  }
+  function liveDraw() {
+    if (!live) return;
+    live.raf = 0;
+    var fresh = renderMarkdown(live.text);
+    live.node.replaceChild(fresh, live.body);
+    live.body = fresh;
+    scrollDown();
+  }
+  function onToken(t) {
+    if (!live) {
+      var m = el('div', 'msg ai live'), body = el('div', 'md');
+      m.appendChild(body);
+      $('aiChat').appendChild(m);
+      live = { node: m, body: body, text: '', raf: 0 };
+      $('aiStatus').textContent = '';
+      showChat();
+    }
+    live.text += t;
+    if (!live.raf) live.raf = window.requestAnimationFrame ? window.requestAnimationFrame(liveDraw) : (liveDraw(), 0);
+  }
+  // text that arrives before a lookup is not the answer; drop it and wait for the next round
+  function onRoundEnd(hasCalls) { if (hasCalls) liveClear(); }
+
+  function followUpsFor(q) {
+    var wrap = el('div', 'followups');
+    A.suggestFollowUps(q).forEach(function (s) {
+      var b = el('button', 'chip', s.label);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        if (s.send) { send(s.text); return; }
+        var t = $('aiInput');
+        t.value = s.text;
+        t.focus();
+        t.setSelectionRange(t.value.length, t.value.length);
+        autosize();
+      });
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
   function addAnswer(text, provider, q) {
-    // only the latest answer offers Regenerate
-    Array.prototype.slice.call($('aiChat').querySelectorAll('.regen')).forEach(drop);
+    // only the latest answer offers Regenerate and follow-ups
+    Array.prototype.slice.call($('aiChat').querySelectorAll('.regen, .followups')).forEach(drop);
     var m = el('div', 'msg ai');
-    m.appendChild(el('span', 'who', short(provider)));
     m.appendChild(renderMarkdown(text));
     var actions = el('div', 'msg-actions');
     var copy = el('button', 'small ghost', 'Copy answer');
@@ -1849,6 +2376,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     actions.appendChild(copy);
     actions.appendChild(regen);
     m.appendChild(actions);
+    m.appendChild(followUpsFor(q));
     $('aiChat').appendChild(m);
     showChat();
     scrollDown();
@@ -1900,6 +2428,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     if (!q) return;
     var chain = buildChain();
     if (!chain.length) { showAiSettings(true); return; }
+    Array.prototype.slice.call($('aiChat').querySelectorAll('.followups')).forEach(drop);
     state.busy = true;
     state.stopFlag = false;
     state.abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -1923,8 +2452,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
           return window.fetch(url, o);
         },
         onLog: addLog,
+        onToken: onToken,
+        onRoundEnd: onRoundEnd,
+        onReset: liveClear,
         onStatus: function (t) { $('aiStatus').textContent = friendlyStatus(t); }
       });
+      liveClear();
       if (res.stopped) {
         addMessage('sys', null, res.text);
       } else {
@@ -1936,6 +2469,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
         addAnswer(res.text, res.provider, q);
       }
     } catch (e) {
+      liveClear();
       if (e && e.cancelled) addMessage('sys', null, 'Stopped.');
       else addMessage('err', 'Error', e && e.message ? e.message : String(e));
     } finally {
@@ -2006,8 +2540,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   $('aiSettingsDone').addEventListener('click', function () { showAiSettings(false); $('aiInput').focus(); });
   $('aiCopyChat').addEventListener('click', copyChat);
   $('aiNew').addEventListener('click', newChat);
-  $('aiDetail').addEventListener('change', function () { state.detail = $('aiDetail').value; save(); });
-  $('aiRows').addEventListener('change', function () { state.maxRows = parseInt($('aiRows').value, 10) || 20; save(); });
+  $('aiDetail').addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button');
+    if (!b) return;
+    state.detail = b.getAttribute('data-value'); save(); setSeg('aiDetail', state.detail);
+  });
+  $('aiRows').addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button');
+    if (!b) return;
+    state.maxRows = parseInt(b.getAttribute('data-value'), 10) || 20; save(); setSeg('aiRows', String(state.maxRows));
+  });
   $('aiPreferred').addEventListener('change', function () { state.preferred = $('aiPreferred').value; save(); updateOff(); });
   $('aiOwn').addEventListener('change', function () { state.own = $('aiOwn').checked; save(); refreshUi(); });
   $('aiTeamCode').addEventListener('input', function () { state.teamCode = $('aiTeamCode').value.trim(); save(); });
