@@ -1441,8 +1441,10 @@ var AiLogic = (function (L) {
     "Question: And <IMEI>?  (when no range contains it)\n" +
     "Answer: I could not find <IMEI> in the table. It may have a typo, so it is worth checking the digits.\n" +
     "\n" +
-    "Formatting: simple Markdown. For a simple question, answer in one or two flowing sentences and bold only the key value. No headings, no italics, no \"Label: value\" lines.\n" +
-    "Use a short bullet list for a few items and a table only when listing several rows.";
+    "Formatting: simple Markdown. For a simple question, answer in one or two flowing sentences and bold only the key value. No headings, no italics, no \"Label: value\" lines, except in the full-details case below.\n" +
+    "Use a short bullet list for a few items and a table only when listing several rows.\n" +
+    "\n" +
+    "Full details: when the person sends just an IMEI (alone, or as \"look up <IMEI>\" or \"what is <IMEI>\") and asks nothing specific, answer in a single reply with one opening sentence (the device type, manufacturer and model) and then a bullet list of every field the tool returned for that row, in the table's order, written as \"- Field name: **value**\". Start the list with \"Sheet row\" (never write it as sheet_row), and do not mention the sheet row in the opening sentence. Do not wait to be asked for the details. If they ask about one thing, such as certification or VoLTE, answer just that in a sentence. Skip the details list only when the answer length is set to short.";
 
   var DETAIL_HINTS = {
     short: 'Keep answers to one or two short sentences and give only what was asked.',
