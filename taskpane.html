@@ -225,6 +225,14 @@ details.more[open] > summary { margin-bottom: 8px; }
 .summary th, .summary td { overflow-wrap: normal; word-break: normal; padding: 3px 5px; }
 button.rowlink { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
 button.rowlink:hover { background: var(--accent-soft); }
+.facts { margin-top: 8px; padding-left: 8px; border-left: 2px solid var(--accent); font-size: 12px; color: var(--muted); }
+.facts .facts-title { font-weight: 600; }
+.facts div { overflow-wrap: anywhere; }
+#updateBanner { background: var(--warn-bg); color: var(--warn-text); padding: 6px 10px; font-size: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#updateBanner[hidden] { display: none; }
+#updateOverlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; background: var(--bg); color: var(--text); }
+#updateOverlay[hidden] { display: none; }
+#updateOverlay p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 details.log { margin: 4px 0 8px; }
 details.log > summary { cursor: pointer; font-weight: 600; font-size: 12px; color: var(--muted); }
 .log-entry { margin: 8px 0; font-size: 12px; }
@@ -255,6 +263,9 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
 
 <div id="outside" role="alert">This page only works inside Excel.</div>
 
+<div id="updateBanner" hidden role="status"><span id="updateBannerText"></span><button type="button" id="updateNow" class="small">Reload now</button></div>
+<div id="updateOverlay" hidden role="alert"><div><strong>Updating IMEI Lookup…</strong><p>Getting the latest version. This takes a few seconds.</p></div></div>
+
 <div id="app">
   <h1 class="sr-only">IMEI Lookup</h1>
 
@@ -280,7 +291,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
         </div>
         <div class="menu-sep"></div>
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.5.1 · 1 Oct 2026</div>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.6.0 · 1 Oct 2026</div>
       </div>
     </div>
   </div>
@@ -642,7 +653,34 @@ var ImeiLogic = (function () {
     return s;
   }
 
+  // ---- update check (pure) ----
+  // The page shows "version 1.6.0 · 1 Oct 2026" in its menu; that text is the single source of truth for the version.
+  function versionInText(t) {
+    var m = /version (\d+)\.(\d+)\.(\d+) \S [0-9]+ \w+ \d{4}/.exec(String(t || ''));
+    return m ? m[1] + '.' + m[2] + '.' + m[3] : null;
+  }
+  function compareVersions(a, b) {
+    var x = String(a).split('.'), y = String(b).split('.');
+    for (var i = 0; i < 3; i++) {
+      var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0);
+      if (d) return d < 0 ? -1 : 1;
+    }
+    return 0;
+  }
+  // o: { running, text (the page GitHub is serving now), busy, tries (reloads already tried for that version) }
+  // -> { action: 'none' | 'reload' | 'banner' | 'stuck', version }
+  function updateDecision(o) {
+    var live = versionInText(o.text);
+    if (!live || !o.running) return { action: 'none' };
+    if (!/<\/html>\s*$/i.test(String(o.text))) return { action: 'none' };      // half-published page: wait
+    if (compareVersions(live, o.running) <= 0) return { action: 'none' };
+    if ((o.tries || 0) >= 2) return { action: 'stuck', version: live };
+    if (o.busy) return { action: 'banner', version: live };
+    return { action: 'reload', version: live };
+  }
+
   return {
+    versionInText: versionInText, compareVersions: compareVersions, updateDecision: updateDecision,
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
     dedupeNormalized: dedupeNormalized,
@@ -1602,6 +1640,26 @@ var AiLogic = (function (L) {
     return capResult(r);
   }
 
+  // ---------- exact values straight from the table (no AI wording) ----------
+  // Turns a finished lookup_imei / lookup_many tool result into plain facts to show under the answer.
+  function factsFor(name, value, table) {
+    if (!value || typeof value !== 'object') return [];
+    var dev = table && table.deviceIdx >= 0 ? table.headers[table.deviceIdx] : null;
+    var out = [];
+    if (name === 'lookup_imei' && value.imei) {
+      var ms = Array.isArray(value.matches) ? value.matches : [];
+      out.push({
+        imei: value.imei, count: value.match_count || 0,
+        matches: ms.map(function (m) { return { row: m.sheet_row, device: dev && m[dev] != null ? String(m[dev]) : '' }; })
+      });
+    } else if (name === 'lookup_many' && Array.isArray(value.results)) {
+      value.results.forEach(function (r) {
+        if (r && r.imei) out.push({ imei: r.imei, count: r.match_count || 0, device: r.device_type || '', matches: null });
+      });
+    }
+    return out;
+  }
+
   // ---------- errors ----------
   function friendlyError(status, detail) {
     var msg;
@@ -2118,7 +2176,7 @@ var AiLogic = (function (L) {
     buildGeminiRequest: buildGeminiRequest, buildGroqRequest: buildGroqRequest, runChat: runChat,
     isFallbackStatus: isFallbackStatus, seedHistory: seedHistory, newStore: newStore, runWithFallback: runWithFallback,
     parseMarkdown: parseMarkdown, toPlainText: toPlainText,
-    systemPromptFor: systemPromptFor, undoLast: undoLast, suggestFollowUps: suggestFollowUps
+    systemPromptFor: systemPromptFor, undoLast: undoLast, suggestFollowUps: suggestFollowUps, factsFor: factsFor
   };
 })(ImeiLogic);
 if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
@@ -2288,6 +2346,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
       : short(chain[0].provider);
   }
   function setBusyUi(b) {
+    window.__imeiBusy = !!b;      // lets the update check wait while a question is running
     var btn = $('aiSend');
     btn.textContent = b ? '■' : '↑';
     btn.setAttribute('aria-label', b ? 'Stop' : 'Send');
@@ -2424,11 +2483,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     return wrap;
   }
 
-  function addAnswer(text, provider, q) {
+  function addAnswer(text, provider, q, facts) {
     // only the latest answer offers Regenerate and follow-ups
     Array.prototype.slice.call($('aiChat').querySelectorAll('.regen, .followups')).forEach(drop);
     var m = el('div', 'msg ai');
     m.appendChild(renderMarkdown(text));
+    try { if (facts && facts.length) m.appendChild(factsBlock(facts)); } catch (e) { /* the facts block is a bonus; the answer must always show */ }
     var actions = el('div', 'msg-actions');
     var copy = el('button', 'small ghost', 'Copy answer');
     copy.type = 'button';
@@ -2469,11 +2529,49 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     $('aiLogBody').appendChild(box);
   }
 
+  var turnFacts = [], turnFactKeys = {};
+  function collectFact(f) {
+    var key = JSON.stringify(f);
+    if (turnFactKeys[key]) return;
+    turnFactKeys[key] = 1;
+    turnFacts.push(f);
+  }
+  // A small block built straight from the table row(s), with no AI wording, so the exact values are always on screen.
+  function factsBlock(facts) {
+    var box = el('div', 'facts');
+    box.appendChild(el('div', 'facts-title', 'From the table'));
+    facts.slice(0, 12).forEach(function (f) {
+      var line = el('div', null);
+      line.appendChild(document.createTextNode(f.imei + ' → '));
+      if (!f.count) { line.appendChild(document.createTextNode('not in the table')); }
+      else if (f.matches) {
+        f.matches.forEach(function (m, i) {
+          if (i) line.appendChild(document.createTextNode(', '));
+          line.appendChild(document.createTextNode((m.device || 'no Device Type value') + ' ('));
+          var b = el('button', 'rowlink', 'row ' + m.row), n = parseInt(m.row, 10);
+          b.type = 'button';
+          b.addEventListener('click', function () { if (window.ImeiApp) window.ImeiApp.goToSheetRow(n); });
+          line.appendChild(b);
+          line.appendChild(document.createTextNode(')'));
+        });
+        if (f.count > f.matches.length) line.appendChild(document.createTextNode(' and ' + (f.count - f.matches.length) + ' more'));
+      } else {
+        line.appendChild(document.createTextNode(f.device || 'no Device Type value'));
+        if (f.count > 1) line.appendChild(document.createTextNode(' (' + f.count + ' matching rows)'));
+      }
+      box.appendChild(line);
+    });
+    if (facts.length > 12) box.appendChild(el('div', null, 'and ' + (facts.length - 12) + ' more IMEIs'));
+    return box;
+  }
+
   function execTool(name, args) {
     if (!window.ImeiApp) return Promise.resolve(A.capResult({ error: 'The lookup tab did not load.' }));
     return window.ImeiApp.ensureTable(false).then(function (table) {
       if (!table) return A.capResult({ error: 'The range table was not found in the workbook.' });
-      return A.executeTool(name, args, table, { maxRows: state.maxRows });
+      var r = A.executeTool(name, args, table, { maxRows: state.maxRows });
+      try { A.factsFor(name, r.value, table).forEach(collectFact); } catch (e) { /* the facts line is a bonus; never break a lookup */ }
+      return r;
     }).catch(function (e) {
       return A.capResult({ error: 'Could not read the workbook: ' + (e && e.message ? e.message : e) });
     });
@@ -2497,6 +2595,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     if (!chain.length) { showAiSettings(true); return; }
     Array.prototype.slice.call($('aiChat').querySelectorAll('.followups')).forEach(drop);
     state.busy = true;
+    turnFacts = []; turnFactKeys = {};
     state.stopFlag = false;
     state.abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
     setBusyUi(true);
@@ -2533,7 +2632,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
         }
         state.shown.push({ q: q, a: res.text, p: res.provider });
         saveChat();
-        addAnswer(res.text, res.provider, q);
+        addAnswer(res.text, res.provider, q, turnFacts.slice());
       }
     } catch (e) {
       liveClear();
@@ -2686,6 +2785,62 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   showChat();
   showAiSettings(useOwn() && buildChain().length === 0);
   $('tabs').hidden = false;
+})();
+</script>
+<!-- ============ Update guard: notices a newer published version and reloads (never touches the workbook) ============ -->
+<script id="updater">
+(function () {
+  'use strict';
+  try {
+    var L = window.ImeiLogic;
+    if (!L || typeof window.fetch !== 'function') return;
+    var KEY = 'imeiLookup.updTry', POLL_MS = 5 * 60 * 1000, MIN_GAP_MS = 60 * 1000;
+    var checking = false, lastCheck = 0;
+    function $(id) { return document.getElementById(id); }
+    function show(id, on) { var n = $(id); if (n) n.hidden = !on; }
+    function readTry() { try { return JSON.parse(window.sessionStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+    function writeTry(v, n) { try { window.sessionStorage.setItem(KEY, JSON.stringify({ v: v, n: n })); } catch (e) { /* ignore */ } }
+    function clearTry() { try { window.sessionStorage.removeItem(KEY); } catch (e) { /* ignore */ } }
+    function running() { var a = $('menuAbout'); return L.versionInText(a ? a.textContent : ''); }
+    function busyNow() {
+      return !!window.__imeiBusy || !!($('input') && $('input').value.trim()) || !!($('aiInput') && $('aiInput').value.trim());
+    }
+    function baseUrl() { return window.location.href.split('#')[0].split('?')[0]; }
+    function reloadTo(version, tries, delay) {
+      writeTry(version, tries + 1);
+      show('updateBanner', false);
+      show('updateOverlay', true);
+      window.setTimeout(function () { window.location.replace(baseUrl() + '?v=' + version); }, delay);
+    }
+    function banner(text, canReload, version, tries) {
+      $('updateBannerText').textContent = text;
+      $('updateNow').hidden = !canReload;
+      $('updateNow').onclick = function () { reloadTo(version, tries, 300); };
+      show('updateBanner', true);
+    }
+    function check(force) {
+      var now = Date.now();
+      if (checking || (!force && now - lastCheck < MIN_GAP_MS)) return;
+      checking = true; lastCheck = now;
+      window.fetch(baseUrl() + '?cb=' + now, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (text) {
+          var run = running(), live = L.versionInText(text), t = readTry();
+          var tries = t && t.v === live ? t.n : 0;
+          var d = L.updateDecision({ running: run, text: text, busy: busyNow(), tries: tries });
+          if (d.action === 'reload') reloadTo(d.version, tries, 900);
+          else if (d.action === 'banner') banner('A new version (' + d.version + ') is ready. Reload when you are finished.', true, d.version, tries);
+          else if (d.action === 'stuck') banner('A newer version (' + d.version + ') is available but this pane could not load it. Close the pane, then reopen it or restart Excel.', false, d.version, tries);
+          else { show('updateBanner', false); if (t && run && L.compareVersions(run, t.v) >= 0) clearTry(); }
+        })
+        .catch(function () { /* offline or blocked: just try again later */ })
+        .then(function () { checking = false; });
+    }
+    check(true);
+    window.setInterval(function () { check(false); }, POLL_MS);
+    window.addEventListener('focus', function () { check(false); });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) check(false); });
+  } catch (e) { /* the update guard must never stop the add-in from working */ }
 })();
 </script>
 </body>
