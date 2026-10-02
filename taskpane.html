@@ -297,7 +297,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
         <button id="menuFeedback" role="menuitem" type="button" hidden>Send feedback…</button>
         <button id="menuUpdate" role="menuitem" type="button" title="Check whether a newer version is available">Check for updates</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.2 · 1 Oct 2026</div>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.3 · 1 Oct 2026</div>
       </div>
     </div>
   </div>
@@ -698,6 +698,9 @@ var ImeiLogic = (function () {
     return { below: below, above: above };
   }
   // Where "Send feedback" goes: a form (opens in the browser), an email address (copied), or nothing (item hidden).
+  function feedbackMailto(email, version) {
+    return 'mailto:' + email + '?subject=' + encodeURIComponent('IMEI Lookup feedback' + (version ? ' (version ' + version + ')' : ''));
+  }
   function feedbackAction(url, email) {
     if (/^https:\/\//i.test(String(url || ''))) return 'url';
     if (/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(email || ''))) return 'email';
@@ -715,7 +718,7 @@ var ImeiLogic = (function () {
   }
 
   return {
-    updateStatus: updateStatus, nearestRanges: nearestRanges, feedbackAction: feedbackAction,
+    updateStatus: updateStatus, nearestRanges: nearestRanges, feedbackAction: feedbackAction, feedbackMailto: feedbackMailto,
     versionInText: versionInText, compareVersions: compareVersions, updateDecision: updateDecision,
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
@@ -1414,7 +1417,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     if (returnFocus) $('menuBtn').focus();
   }
   // Set ONE of these to turn on "Send feedback…" in the ⋯ menu: a form address (https://...) or an email address.
-  var FEEDBACK_URL = '', FEEDBACK_EMAIL = '';
+  var FEEDBACK_URL = '', FEEDBACK_EMAIL = 'walter@yoderconnections.com';
   var toastTimer = 0;
   function toast(msg) {
     var t = $('toast');
@@ -1434,9 +1437,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
         } catch (e) { /* fall through */ }
         window.open(FEEDBACK_URL, '_blank');
       } else {
+        // Always copy the address (it works on every PC), and also try to open a new email in the person's mail program.
         var tmp = document.createElement('button');
         copyText(FEEDBACK_EMAIL, tmp);
-        toast('Feedback address copied: ' + FEEDBACK_EMAIL);
+        toast('Opening an email to ' + FEEDBACK_EMAIL + '. If nothing opens, the address has been copied.');
+        try {
+          var about = $('menuAbout') ? L.versionInText($('menuAbout').textContent) : null;
+          window.open(L.feedbackMailto(FEEDBACK_EMAIL, about), '_blank');
+        } catch (e) { /* the copied address is the fallback */ }
       }
     });
   }
