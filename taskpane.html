@@ -297,7 +297,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
         <button id="menuFeedback" role="menuitem" type="button" hidden>Send feedback…</button>
         <button id="menuUpdate" role="menuitem" type="button" title="Check whether a newer version is available">Check for updates</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.1 · 1 Oct 2026</div>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.2 · 1 Oct 2026</div>
       </div>
     </div>
   </div>
@@ -2907,6 +2907,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     function baseUrl() { return window.location.href.split('#')[0].split('?')[0]; }
     function reloadTo(version, tries, delay) {
       writeTry(version, tries + 1);
+      try { window.localStorage.setItem('imeiLookup.updated', JSON.stringify({ from: running(), to: version, t: Date.now() })); } catch (e) { /* ignore */ }
       show('updateBanner', false);
       show('updateOverlay', true);
       window.setTimeout(function () { window.location.replace(baseUrl() + '?v=' + version); }, delay);
@@ -2933,7 +2934,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
       if (!force && now - lastCheck < MIN_GAP_MS) return;
       checking = true; lastCheck = now;
       if (manual) say('Checking for updates…');
-      window.fetch(baseUrl() + '?cb=' + now, { cache: 'no-store' })
+      // cache: 'reload' goes to the network AND updates the cached copy of the pane's normal address,
+      // so the next time Excel opens the pane it gets the fresh page instead of an old cached one
+      window.fetch(baseUrl(), { cache: 'reload' })
         .then(function (r) { return r.ok ? r.text() : ''; })
         .then(function (text) {
           var run = running(), live = L.versionInText(text), t = readTry();
@@ -2954,6 +2957,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
         .catch(function () { if (manual) say('Could not check for updates. Check your connection and try again.'); })
         .then(function () { checking = false; });
     }
+    try {
+      var done = JSON.parse(window.localStorage.getItem('imeiLookup.updated') || 'null');
+      if (done) {
+        window.localStorage.removeItem('imeiLookup.updated');
+        if (Date.now() - done.t < 60000 && running() === done.to) say('Updated from ' + done.from + ' to ' + done.to + '.');
+      }
+    } catch (e) { /* ignore */ }
     if ($('menuUpdate')) $('menuUpdate').addEventListener('click', function () { check(true, true); });
     check(true);
     window.setInterval(function () { check(false); }, POLL_MS);
