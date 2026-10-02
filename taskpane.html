@@ -473,6 +473,32 @@ textarea:focus, select:focus, input[type=text]:focus, input[type=password]:focus
     var(--bg);
 }
 #updateOverlay > div::before { border-top-color: var(--c2); border-right-color: var(--c3); border-bottom-color: var(--c1); }
+
+/* ---- polish layer: the last flat spots (looks only) ---- */
+/* 1) segmented choices: the selected one is a glossy gradient, like the active tab */
+.seg button[aria-checked="true"] {
+  color: var(--accent-text); text-shadow: var(--btn-ts);
+  background-color: var(--c1);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .30) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, .10) 100%), var(--grad);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 2px 8px var(--glow);
+}
+.seg button { transition: background-color .16s ease, color .16s ease; }
+/* 2) tables: tinted header row and a soft row highlight */
+th { background-color: var(--accent-soft); background-image: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0)); color: var(--text); }
+tr:hover td { background-image: linear-gradient(90deg, var(--accent-soft), rgba(0, 0, 0, 0) 85%); }
+/* 3) quiet text buttons get a soft glass highlight on hover */
+button.ghost:hover, .msg-actions button:hover, .card-actions button:hover {
+  background-image: linear-gradient(180deg, var(--glass-1), var(--glass-2));
+  border-color: var(--border); box-shadow: inset 0 1px 0 var(--glass-edge), 0 1px 3px rgba(0, 0, 0, .12);
+}
+/* 4) warning, error and info bars, and the collapsible headings */
+.banner.warn, .note.warn { background-image: linear-gradient(90deg, rgba(255, 190, 40, .22), rgba(255, 190, 40, 0) 90%); border-left: 3px solid #d99a00; }
+.banner.err, .note.err, .msg.err { background-image: linear-gradient(90deg, rgba(229, 83, 75, .20), rgba(229, 83, 75, 0) 90%); border-left: 3px solid #d64545; }
+.banner.info { background-image: linear-gradient(90deg, rgba(14, 124, 134, .18), rgba(14, 124, 134, 0) 90%); border-left: 3px solid var(--c2); }
+#updateBanner { background-image: linear-gradient(90deg, rgba(255, 190, 40, .24), rgba(255, 190, 40, 0) 95%); }
+details > summary { transition: color .16s ease; }
+details > summary:hover { color: var(--text); }
+details[open] > summary { color: var(--c2); }
 </style>
 </head>
 <body>
@@ -510,7 +536,7 @@ textarea:focus, select:focus, input[type=text]:focus, input[type=password]:focus
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
         <button id="menuFeedback" role="menuitem" type="button" hidden>Send feedback…</button>
         <button id="menuUpdate" role="menuitem" type="button" title="Check whether a newer version is available">Check for updates</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.8.0 · 1 Oct 2026</div>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.8.1 · 1 Oct 2026</div>
       </div>
     </div>
   </div>
