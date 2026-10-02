@@ -233,6 +233,9 @@ button.rowlink:hover { background: var(--accent-soft); }
 #updateOverlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; background: var(--bg); color: var(--text); }
 #updateOverlay[hidden] { display: none; }
 #updateOverlay p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+#toast { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: 90%; z-index: 60; padding: 7px 12px; border-radius: 8px; background: var(--text); color: var(--bg); font-size: 12px; }
+#toast[hidden] { display: none; }
+.near { margin-top: 4px; }
 details.log { margin: 4px 0 8px; }
 details.log > summary { cursor: pointer; font-weight: 600; font-size: 12px; color: var(--muted); }
 .log-entry { margin: 8px 0; font-size: 12px; }
@@ -263,6 +266,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
 
 <div id="outside" role="alert">This page only works inside Excel.</div>
 
+<div id="toast" hidden role="status"></div>
 <div id="updateBanner" hidden role="status"><span id="updateBannerText"></span><button type="button" id="updateNow" class="small">Reload now</button></div>
 <div id="updateOverlay" hidden role="alert"><div><strong>Updating IMEI Lookup…</strong><p>Getting the latest version. This takes a few seconds.</p></div></div>
 
@@ -291,7 +295,8 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
         </div>
         <div class="menu-sep"></div>
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.6.2 · 1 Oct 2026</div>
+        <button id="menuFeedback" role="menuitem" type="button" hidden>Send feedback…</button>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.0 · 1 Oct 2026</div>
       </div>
     </div>
   </div>
@@ -424,6 +429,7 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
       <div class="hint">Your sheet never leaves Excel. Only lookup results are sent to the AI.</div>
       <div class="chips">
         <button type="button" class="chip" data-fill="What device is ">Look up an IMEI</button>
+        <button type="button" class="chip" data-fill="Look up these IMEIs and show a table of each one's device type:&#10;">Look up a list</button>
         <button type="button" class="chip" data-send="List the columns in the table.">List the columns</button>
         <button type="button" class="chip" data-fill="Find rows where Manufacturer contains ">Find by manufacturer</button>
       </div>
@@ -679,7 +685,26 @@ var ImeiLogic = (function () {
     return { action: 'reload', version: live };
   }
 
+  // The closest range that ends just below the IMEI and the closest that starts just above it (zero-padded 15-char strings).
+  function nearestRanges(rows, imei) {
+    var below = null, above = null;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r.from > r.to) continue;                       // inverted ranges are reported by the table check, not used here
+      if (r.to < imei && (!below || r.to > below.to)) below = r;
+      else if (r.from > imei && (!above || r.from < above.from)) above = r;
+    }
+    return { below: below, above: above };
+  }
+  // Where "Send feedback" goes: a form (opens in the browser), an email address (copied), or nothing (item hidden).
+  function feedbackAction(url, email) {
+    if (/^https:\/\//i.test(String(url || ''))) return 'url';
+    if (/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(email || ''))) return 'email';
+    return 'none';
+  }
+
   return {
+    nearestRanges: nearestRanges, feedbackAction: feedbackAction,
     versionInText: versionInText, compareVersions: compareVersions, updateDecision: updateDecision,
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
@@ -1100,7 +1125,26 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     norm.notes.forEach(function (n) { card.appendChild(el('div', 'note', n)); });
     norm.warnings.forEach(function (n) { card.appendChild(el('div', 'note warn', n)); });
     if (!norm.ok) { card.appendChild(el('div', 'note err', norm.error)); return card; }
-    if (matches.length === 0) { card.appendChild(el('div', 'note', 'No matching range.')); return card; }
+    if (matches.length === 0) {
+      card.appendChild(el('div', 'note', 'No matching range.'));
+      try {
+        var near = L.nearestRanges(table.rows, norm.imei), box = el('div', 'note near');
+        [['Closest range below', near.below], ['Closest range above', near.above]].forEach(function (pair) {
+          var r = pair[1];
+          if (!r) return;
+          var line = el('div', null);
+          line.appendChild(document.createTextNode(pair[0] + ': ' + r.from + ' to ' + r.to + ' (' + (deviceOf(table, r) || 'no Device Type') + ', '));
+          var b = el('button', 'rowlink', 'row ' + (r.sheetRow + 1));
+          b.type = 'button';
+          b.addEventListener('click', function () { goToRow(table, r); });
+          line.appendChild(b);
+          line.appendChild(document.createTextNode(')'));
+          box.appendChild(line);
+        });
+        if (box.childNodes.length) card.appendChild(box);
+      } catch (e) { /* the nearest ranges are a bonus */ }
+      return card;
+    }
 
     matches.forEach(function (row) {
       var m = el('div', 'match');
@@ -1358,7 +1402,36 @@ if (typeof module !== 'undefined' && module.exports) module.exports = ImeiLogic;
     $('menuBtn').setAttribute('aria-expanded', 'false');
     if (returnFocus) $('menuBtn').focus();
   }
+  // Set ONE of these to turn on "Send feedback…" in the ⋯ menu: a form address (https://...) or an email address.
+  var FEEDBACK_URL = '', FEEDBACK_EMAIL = '';
+  var toastTimer = 0;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(function () { t.hidden = true; }, 3500);
+  }
+  function initFeedback() {
+    var kind = L.feedbackAction(FEEDBACK_URL, FEEDBACK_EMAIL);
+    if (kind === 'none') return;
+    $('menuFeedback').hidden = false;
+    $('menuFeedback').addEventListener('click', function () {
+      if (kind === 'url') {
+        try {
+          if (window.Office && Office.context && Office.context.ui && Office.context.ui.openBrowserWindow) { Office.context.ui.openBrowserWindow(FEEDBACK_URL); return; }
+        } catch (e) { /* fall through */ }
+        window.open(FEEDBACK_URL, '_blank');
+      } else {
+        var tmp = document.createElement('button');
+        copyText(FEEDBACK_EMAIL, tmp);
+        toast('Feedback address copied: ' + FEEDBACK_EMAIL);
+      }
+    });
+  }
+
   function initMenu() {
+    initFeedback();
     try {
       var saved = parseInt(window.localStorage.getItem('imeiLookup.textSize'), 10);
       if (saved >= 0 && saved < SIZES.length) sizeIdx = saved;
@@ -1482,7 +1555,9 @@ var AiLogic = (function (L) {
     "Formatting: simple Markdown. For a simple question, answer in one or two flowing sentences and bold only the key value. No headings, no italics, no \"Label: value\" lines, except in the full-details case below.\n" +
     "Use a short bullet list for a few items and a table only when listing several rows.\n" +
     "\n" +
-    "Full details: when the person sends just an IMEI (alone, or as \"look up <IMEI>\" or \"what is <IMEI>\") and asks nothing specific, answer in a single reply with one opening sentence (the device type, manufacturer and model) and then a bullet list of every field the tool returned for that row, in the table's order, written as \"- Field name: **value**\". Start the list with \"Sheet row\" (never write it as sheet_row), and do not mention the sheet row in the opening sentence. Do not wait to be asked for the details. If they ask about one thing, such as certification or VoLTE, answer just that in a sentence. Skip the details list only when the answer length is set to short.";
+    "Full details: when the person sends just an IMEI (alone, or as \"look up <IMEI>\" or \"what is <IMEI>\") and asks nothing specific, answer in a single reply with one opening sentence (the device type, manufacturer and model) and then a bullet list of every field the tool returned for that row, in the table's order, written as \"- Field name: **value**\". Start the list with \"Sheet row\" (never write it as sheet_row), and do not mention the sheet row in the opening sentence. Do not wait to be asked for the details. If they ask about one thing, such as certification or VoLTE, answer just that in a sentence. Skip the details list only when the answer length is set to short.\n" +
+    "\n" +
+    "Lists: when the person pastes several IMEIs (one per line or separated by commas) and asks for nothing specific, or asks for a table, look them all up together and answer with a Markdown table with one row per IMEI and the columns IMEI and Device Type, in the order given. Write not found, or the reason it is invalid, in the Device Type cell for an IMEI that has no match. Add other columns only if asked.";
 
   var DETAIL_HINTS = {
     short: 'Keep answers to one or two short sentences and give only what was asked.',
@@ -2300,6 +2375,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
     $('tabBtnAI').setAttribute('aria-selected', String(ai));
     $('tabBtnLookup').tabIndex = ai ? -1 : 0;
     $('tabBtnAI').tabIndex = ai ? 0 : -1;
+    try { window.localStorage.setItem('imeiLookup.tab', ai ? 'ai' : 'lookup'); } catch (e) { /* ignore */ }
     if (ai) { scrollDown(); $('aiInput').focus(); }
   }
 
@@ -2562,6 +2638,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
       box.appendChild(line);
     });
     if (facts.length > 12) box.appendChild(el('div', null, 'and ' + (facts.length - 12) + ' more IMEIs'));
+    var cp = el('button', 'small ghost', 'Copy these values');
+    cp.type = 'button';
+    cp.addEventListener('click', function () {
+      var text = facts.map(function (f) {
+        if (!f.count) return f.imei + ': not in the table';
+        if (f.matches) return f.imei + ': ' + f.matches.map(function (m) { return (m.device || 'no Device Type value') + ' (row ' + m.row + ')'; }).join(', ');
+        return f.imei + ': ' + (f.device || 'no Device Type value');
+      }).join('\n');
+      if (window.ImeiApp) window.ImeiApp.copyText(text, cp);
+    });
+    box.appendChild(cp);
     return box;
   }
 
@@ -2785,6 +2872,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
   showChat();
   showAiSettings(useOwn() && buildChain().length === 0);
   $('tabs').hidden = false;
+  try { if (window.localStorage.getItem('imeiLookup.tab') === 'ai') setTab('ai'); } catch (e) { /* ignore */ }
 })();
 </script>
 <!-- ============ Update guard: notices a newer published version and reloads (never touches the workbook) ============ -->
