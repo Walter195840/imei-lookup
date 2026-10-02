@@ -414,6 +414,65 @@ button.round { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 3px 10px var
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---- aurora layer: more colour and shine on top of the glossy theme (still only looks) ---- */
+:root {
+  --c1: #0f7d5c; --c2: #0e7c86; --c3: #4a4fd6;
+  --grad: linear-gradient(135deg, var(--c1), var(--c2) 55%, var(--c3));
+  --spec: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .42) 50%, transparent 62%), linear-gradient(180deg, rgba(255, 255, 255, .30) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, .10) 100%);
+  --glow2: rgba(74, 79, 214, .26);
+  --aur-1: rgba(20, 170, 130, .24); --aur-2: rgba(80, 120, 255, .20); --aur-3: rgba(200, 90, 230, .12);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c1: #5fd9b0; --c2: #5cc8e6; --c3: #a5a8ff;
+    --glow2: rgba(130, 140, 255, .30);
+    --aur-1: rgba(76, 185, 146, .22); --aur-2: rgba(90, 130, 255, .20); --aur-3: rgba(210, 100, 240, .14);
+  }
+}
+body {
+  background:
+    radial-gradient(460px 300px at 0% -8%, var(--aur-1), transparent 70%),
+    radial-gradient(420px 300px at 100% 0%, var(--aur-2), transparent 70%),
+    radial-gradient(380px 260px at 50% 108%, var(--aur-3), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+button.primary, .tabs button[aria-selected="true"] {
+  background-color: var(--c1);
+  background-image: var(--spec), var(--grad);
+  background-size: 260% 100%, 100% 100%, 100% 100%;
+  background-position: 130% 0, 0 0, 0 0;
+  background-repeat: no-repeat;
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 3px 10px var(--glow), 0 8px 22px var(--glow2);
+  transition: background-position .8s ease, transform .12s ease, box-shadow .16s ease, filter .16s ease;
+}
+button.primary:hover, .tabs button[aria-selected="true"]:hover { background-color: var(--c1); background-position: -30% 0, 0 0, 0 0; }
+.msg.user {
+  background-color: var(--c1);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .30) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, .10) 100%), var(--grad);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 4px 12px var(--glow), 0 8px 22px var(--glow2);
+}
+.card { position: relative; }
+.card:not(.nomatch):not(.bad)::before {
+  content: ""; position: absolute; left: -4px; top: -1px; bottom: -1px; width: 4px; border-radius: 13px 0 0 13px;
+  background: linear-gradient(180deg, var(--c1), var(--c2), var(--c3));
+}
+.device:not(.empty) { background-image: linear-gradient(95deg, var(--c1), var(--c2) 60%, var(--c3)); }
+.card.compact .brief { color: var(--c2); }
+.tips { border: 1px solid transparent; background: linear-gradient(135deg, var(--accent-soft), var(--accent-soft)) padding-box, var(--grad) border-box; }
+.chip:hover { border-color: var(--c2); box-shadow: 0 4px 14px var(--glow), 0 8px 22px var(--glow2), inset 0 1px 0 var(--glass-edge); }
+.facts { border-left-color: var(--c2); background-image: linear-gradient(90deg, var(--accent-soft), transparent 90%); }
+.composer-box:focus-within { border-color: var(--c2); box-shadow: 0 0 0 3px var(--glow), 0 8px 26px var(--glow2), var(--shadow-m); }
+textarea:focus, select:focus, input[type=text]:focus, input[type=password]:focus { border-color: var(--c2); box-shadow: 0 0 0 3px var(--glow); }
+#updateOverlay {
+  background:
+    radial-gradient(420px 300px at 45% 33%, var(--aur-1), transparent 75%),
+    radial-gradient(380px 280px at 65% 55%, var(--aur-2), transparent 75%),
+    var(--bg);
+}
+#updateOverlay > div::before { border-top-color: var(--c2); border-right-color: var(--c3); border-bottom-color: var(--c1); }
 </style>
 </head>
 <body>
