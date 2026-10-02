@@ -296,7 +296,8 @@ button.round { width: 30px; height: 30px; padding: 0; border-radius: 50%; font-s
         <div class="menu-sep"></div>
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
         <button id="menuFeedback" role="menuitem" type="button" hidden>Send feedback…</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.0 · 1 Oct 2026</div>
+        <button id="menuUpdate" role="menuitem" type="button" title="Check whether a newer version is available">Check for updates</button>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.7.1 · 1 Oct 2026</div>
       </div>
     </div>
   </div>
@@ -703,8 +704,18 @@ var ImeiLogic = (function () {
     return 'none';
   }
 
+  // What a check found, for the "Check for updates" button: unreachable | unreadable | current | publishing | newer
+  function updateStatus(running, text) {
+    if (!text) return 'unreachable';
+    var live = versionInText(text);
+    if (!live || !running) return 'unreadable';
+    if (compareVersions(live, running) <= 0) return 'current';
+    if (!/<\/html>\s*$/i.test(String(text))) return 'publishing';
+    return 'newer';
+  }
+
   return {
-    nearestRanges: nearestRanges, feedbackAction: feedbackAction,
+    updateStatus: updateStatus, nearestRanges: nearestRanges, feedbackAction: feedbackAction,
     versionInText: versionInText, compareVersions: compareVersions, updateDecision: updateDecision,
     luhnCheckDigit: luhnCheckDigit, luhnValid: luhnValid, normalizeImei: normalizeImei,
     padCell: padCell, findMatches: findMatches, findHeaderIndex: findHeaderIndex,
@@ -2906,24 +2917,44 @@ if (typeof module !== 'undefined' && module.exports) module.exports = AiLogic;
       $('updateNow').onclick = function () { reloadTo(version, tries, 300); };
       show('updateBanner', true);
     }
-    function check(force) {
+    var toastTimer = 0;
+    function say(msg) {
+      var t = $('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.hidden = false;
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(function () { t.hidden = true; }, 4000);
+    }
+    // manual = the person clicked "Check for updates": always answer, even when nothing changed
+    function check(force, manual) {
       var now = Date.now();
-      if (checking || (!force && now - lastCheck < MIN_GAP_MS)) return;
+      if (checking) { if (manual) say('Already checking…'); return; }
+      if (!force && now - lastCheck < MIN_GAP_MS) return;
       checking = true; lastCheck = now;
+      if (manual) say('Checking for updates…');
       window.fetch(baseUrl() + '?cb=' + now, { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.text() : ''; })
         .then(function (text) {
           var run = running(), live = L.versionInText(text), t = readTry();
+          var status = L.updateStatus(run, text);
+          if (manual && status !== 'newer') {
+            say(status === 'current' ? 'You have the latest version (' + run + ').'
+              : status === 'publishing' ? 'A new version is being published. Try again in a minute.'
+              : status === 'unreachable' ? 'Could not check for updates. Check your connection and try again.'
+              : 'Could not read the latest version. Try again later.');
+          }
           var tries = t && t.v === live ? t.n : 0;
           var d = L.updateDecision({ running: run, text: text, busy: busyNow(), tries: tries });
           if (d.action === 'reload') reloadTo(d.version, tries, 900);
-          else if (d.action === 'banner') banner('A new version (' + d.version + ') is ready. Reload when you are finished.', true, d.version, tries);
+          else if (d.action === 'banner') { banner('A new version (' + d.version + ') is ready. Reload when you are finished.', true, d.version, tries); if (manual) say('A new version (' + d.version + ') is ready.'); }
           else if (d.action === 'stuck') banner('A newer version (' + d.version + ') is available but this pane could not load it. Close the pane, then reopen it or restart Excel.', false, d.version, tries);
           else { show('updateBanner', false); if (t && run && L.compareVersions(run, t.v) >= 0) clearTry(); }
         })
-        .catch(function () { /* offline or blocked: just try again later */ })
+        .catch(function () { if (manual) say('Could not check for updates. Check your connection and try again.'); })
         .then(function () { checking = false; });
     }
+    if ($('menuUpdate')) $('menuUpdate').addEventListener('click', function () { check(true, true); });
     check(true);
     window.setInterval(function () { check(false); }, POLL_MS);
     window.addEventListener('focus', function () { check(false); });
