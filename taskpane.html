@@ -500,6 +500,72 @@ details > summary { transition: color .16s ease; }
 details > summary:hover { color: var(--text); }
 details[open] > summary { color: var(--c2); }
 </style>
+<style id="prefs-css">
+/* viewer preferences from the ⋯ menu */
+html.no-facts .facts { display: none !important; }
+html.reduce-fx {
+  --glow: transparent; --glow2: transparent;
+  --shadow-s: 0 0 0 0 transparent; --shadow-m: 0 0 0 0 transparent;
+  --aur-1: transparent; --aur-2: transparent; --aur-3: transparent;
+}
+html.reduce-fx *, html.reduce-fx *::before, html.reduce-fx *::after {
+  animation: none !important; transition: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html.reduce-fx #updateOverlay > div::before { animation: spin .9s linear infinite !important; }
+html.reduce-fx textarea:focus, html.reduce-fx select:focus, html.reduce-fx input[type=text]:focus, html.reduce-fx input[type=password]:focus,
+html.reduce-fx .composer-box:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+</style>
+<script id="prefs">
+(function () {
+  'use strict';
+  var K = { theme: 'imeiLookup.theme', fx: 'imeiLookup.fx', facts: 'imeiLookup.facts' };
+  var root = document.documentElement;
+  function get(k, d) { try { return window.localStorage.getItem(k) || d; } catch (e) { return d; } }
+  function put(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+
+  // Light or Dark on purpose: the page's dark colours live in "prefers-color-scheme: dark" blocks, so switch those on or off.
+  function applyTheme(mode) {
+    try {
+      for (var i = 0; i < document.styleSheets.length; i++) {
+        var rules;
+        try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+        for (var j = 0; j < rules.length; j++) {
+          var r = rules[j];
+          if (r.type !== 4 || !r.media) continue;                       // media rules only
+          if (r.__origMedia === undefined) {
+            if (!/prefers-color-scheme:\s*dark/.test(r.media.mediaText)) continue;
+            r.__origMedia = r.media.mediaText;
+          }
+          r.media.mediaText = mode === 'dark' ? 'all' : mode === 'light' ? 'not all' : r.__origMedia;
+        }
+      }
+      root.style.colorScheme = mode === 'auto' ? '' : mode;
+    } catch (e) { /* keep the automatic theme */ }
+  }
+  function applyFx(on) { root.classList.toggle('reduce-fx', !on); }
+  function applyFacts(on) { root.classList.toggle('no-facts', !on); }
+
+  var theme = get(K.theme, 'auto');
+  if (theme !== 'light' && theme !== 'dark') theme = 'auto';
+  var fx = get(K.fx, 'on') !== 'off', facts = get(K.facts, 'on') !== 'off';
+  applyTheme(theme); applyFx(fx); applyFacts(facts);
+
+  function labels() {
+    function set(id, text) { var b = document.getElementById(id); if (b) b.textContent = text; }
+    set('menuTheme', 'Theme: ' + (theme === 'auto' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark'));
+    set('menuFx', 'Visual effects: ' + (fx ? 'On' : 'Off'));
+    set('menuFacts', 'From the table line: ' + (facts ? 'On' : 'Off'));
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    labels();
+    function wire(id, fn) { var b = document.getElementById(id); if (b) b.addEventListener('click', fn); }
+    wire('menuTheme', function () { theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto'; put(K.theme, theme); applyTheme(theme); labels(); });
+    wire('menuFx', function () { fx = !fx; put(K.fx, fx ? 'on' : 'off'); applyFx(fx); labels(); });
+    wire('menuFacts', function () { facts = !facts; put(K.facts, facts ? 'on' : 'off'); applyFacts(facts); labels(); });
+  });
+})();
+</script>
 </head>
 <body>
 
@@ -531,12 +597,15 @@ details[open] > summary { color: var(--c2); }
           <button id="aiMenuSettings" role="menuitem" type="button" aria-controls="aiSettings">AI settings…</button>
           <button id="aiCopyChat" role="menuitem" type="button">Copy conversation</button>
           <button id="aiNew" role="menuitem" type="button">New chat</button>
+          <button id="menuFacts" role="menuitem" type="button" title="The small block under answers with the exact values from your table">From the table line: On</button>
         </div>
         <div class="menu-sep"></div>
         <button id="menuTextSize" role="menuitem" type="button">Text size: Normal</button>
+        <button id="menuTheme" role="menuitem" type="button" title="Auto follows Windows; or force Light or Dark">Theme: Auto</button>
+        <button id="menuFx" role="menuitem" type="button" title="Turn off the glow and animations (for slower PCs)">Visual effects: On</button>
         <button id="menuFeedback" role="menuitem" type="button" hidden>Send feedback…</button>
         <button id="menuUpdate" role="menuitem" type="button" title="Check whether a newer version is available">Check for updates</button>
-        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.9.0 · 3 Oct 2026</div>
+        <div class="menu-about" id="menuAbout">IMEI Lookup · version 1.10.0 · 3 Oct 2026</div>
       </div>
     </div>
   </div>
